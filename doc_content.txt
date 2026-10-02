@@ -1,0 +1,93 @@
+﻿Brain Dump
+1. VẤN ĐỀ
+Sinh viên có nhiều deadline chồng chéo nhưng không biết bắt đầu từ đâu, làm lúc nào.
+Todo app và Calendar chỉ lưu task, deadline và lịch. Việc chia nhỏ, cân đối và xếp lịch vẫn do người dùng tự làm.
+Một deadline không đứng riêng lẻ: nó nằm cạnh thời khóa biểu, hoạt động ngoại khóa, việc cá nhân và các deadline khác. Tự cân đối tất cả dễ gây quá tải.
+Hậu quả: kế hoạch thiếu thực tế, trì hoãn, dồn việc sát hạn.
+2. GIẢI PHÁP
+Brain Dump là một AI planner: người dùng đổ hết việc trong đầu vào, AI biến chúng thành lịch làm việc cụ thể, khả thi và tự sửa khi cuộc sống thay đổi.
+Cách web được tổ chức: web gồm 1 trợ lý AI (khung chat) và các màn hình công cụ (lịch, hôm nay, tiến độ, báo cáo, cảnh báo). AI là "bộ não" làm mọi việc liên quan đến lập kế hoạch; các màn hình là nơi người dùng xem và tương tác với kết quả. Mọi thay đổi AI thực hiện đều hiện ngay lên lịch.
+3. CHỨC NĂNG
+A. Giao diện chính 
+Nguyên tắc: người dùng mở web là thấy ngay lịch tuần + khung chat AI, không phải học cách dùng. Ít menu, ít nút, muốn làm gì thì gõ vào chat.
+Lần đầu dùng (onboarding, 3 bước):
+AI chào và hỏi lịch cố định (gõ, hoặc tải ảnh thời khóa biểu).
+Người dùng cho toàn bộ việc đang có vào chat.
+AI hiện lịch đã xếp để xem và chấp nhận.
+B. Chức năng của AI 
+Người dùng đưa ra câu lệnh. AI tự hiểu ý và làm đúng việc. Các chức năng của AI bao gồm:
+B1. Hiểu và nhập việc (Brain Dump)
+Đọc câu tự do (tiếng Việt, lẫn tiếng Anh, viết tắt, sai chính tả) và tách: tên việc, deadline, thời lượng, độ ưu tiên, môn.
+Hiểu mốc thời gian tương đối: "thứ Sáu này", "tuần sau", "cuối tháng", "trước 5h chiều mai".
+Nhận nhiều việc trong một đoạn; nhận cả đoạn thông báo dán từ giảng viên/nhóm chat rồi tự tách deadline; nhận file đề bài (PDF/ảnh) rồi tự tạo task.
+Thiếu thông tin quan trọng thì hỏi lại ngắn gọn, không đoán bừa.
+Nhập lịch cố định từ ảnh thời khóa biểu.
+Hỗ trợ nhập bằng giọng nói (web chuyển giọng thành chữ rồi gửi cho AI).
+B2. Chia nhỏ task (Breakdown)
+Nhận diện loại việc (bài luận, thuyết trình, ôn thi, đồ án) và chia theo quy trình phù hợp. Ví dụ: tìm tài liệu → đọc → outline → viết → chỉnh sửa → nộp.
+Mỗi bước có tên, thời lượng, thứ tự trước/sau.
+Còn ít thời gian thì chia ít bước, còn dài thì chia nhiều bước.
+Người dùng ra lệnh sửa: "thêm bước kiểm tra đạo văn", "bỏ bước đọc".
+Dùng mẫu có sẵn (Bài luận, Thi cuối kỳ, Đồ án nhóm) khi nhận ra loại việc quen thuộc.
+B3. Xếp lịch (Schedule)
+Tìm khung giờ trống thật sự sau khi trừ lịch cố định.
+Quy tắc xếp: không trùng lịch cố định; có nghỉ giữa các phiên (ví dụ 10 phút sau 50 phút); giới hạn số giờ tối đa mỗi ngày; việc khó xếp vào giờ tập trung tốt; luôn chừa thời gian đệm trước deadline.
+Nhiều deadline xung đột thì cân đối theo mức gấp và mức quan trọng.
+Tôn trọng ngày nghỉ được bảo vệ (người dùng đặt "CN không làm gì").
+Học "giờ vàng": dựa vào lịch sử hoàn thành để xếp việc khó vào lúc người dùng làm tốt nhất.
+B4. Sắp xếp lại theo lệnh (Re-plan) ⭐ điểm nhấn
+Hiểu các nhóm lệnh: dời lịch ("Tối thứ Tư mình bận"), đổi deadline ("Dời sang thứ Hai"), đổi cường độ ("Tuần này mệt, làm nhẹ thôi"), đổi ưu tiên ("Làm Marketing trước"), ràng buộc mới ("Đừng xếp sau 10h đêm", "Tối đa 2 tiếng/ngày"), việc đột xuất ("Mai có kiểm tra bất ngờ").
+Tự dồn lịch khi trễ: bỏ lỡ hoặc trễ một bước thì AI xếp lại các bước còn lại, cố giữ deadline.
+Làm nhanh hơn dự kiến: AI đề xuất dùng thời gian dư (nghỉ hoặc làm sớm việc kế).
+Học từ thực tế: nếu người dùng luôn làm lâu hơn ước tính khoảng 30%, lần sau tự cộng hệ số bù.
+Chỉ sửa phần bị ảnh hưởng, không xáo trộn cả lịch.
+Luôn giải thích ngắn gọn đã đổi gì và vì sao, kèm nút Chấp nhận / Hoàn tác.
+Lệnh mâu thuẫn hoặc không khả thi thì nói rõ lý do và đưa 2-3 lựa chọn.
+B5. Kiểm tra khối lượng và cảnh báo (Workload)
+Tự quét toàn bộ lịch để phát hiện: ngày quá tải, deadline dồn cục, thiếu giờ trống so với thời lượng cần.
+Cảnh báo sớm 1-2 tuần trước khi dồn deadline; đưa mức tải (nhẹ / vừa / nặng / quá tải).
+Cảnh báo trung thực nếu không kịp và đề xuất phương án: giảm phạm vi, làm thêm cuối tuần, xin dời hạn.
+Kết quả cảnh báo hiển thị ở banner trên lịch (xem mục C).
+B6. Các chế độ đặc biệt (kích hoạt bằng chat hoặc nút gợi ý)
+Panic Mode: sát deadline mà chưa kịp thì AI xếp lịch dày nhất, đề xuất bản tối thiểu để nộp được và việc nào có thể cắt.
+What-if: "Nếu mình nhận thêm việc làm thêm 10 tiếng/tuần thì lịch sao?" AI mô phỏng trước, chưa áp dụng cho đến khi người dùng đồng ý.
+B7. Tư vấn và hỏi đáp
+Trả lời: "Tuần này mình rảnh lúc nào?", "Việc nào gấp nhất?", "Mình có kịp deadline không?".
+Tóm tắt kế hoạch hôm nay / tuần này; tóm tắt báo cáo tuần/tháng bằng lời.
+Gợi ý cách bắt đầu khi người dùng bí ("Chưa biết làm gì trước").
+Nhắc động viên nhẹ khi người dùng giữ streak hoặc vừa hoàn thành việc lớn.
+C. Chức năng còn lại trên web 
+C1. Lịch (màn hình chính)
+Xem theo ngày / tuần / tháng; phân màu theo môn hoặc mức ưu tiên; khối lịch cố định khác màu với khối việc.
+Kéo thả để chỉnh tay; AI tự cập nhật lại phần liên quan.
+Bấm vào khối việc: xem chi tiết, đánh dấu xong, hoặc bắt đầu Pomodoro.
+C2. Hôm nay (Checklist)
+Màn hình gọn chỉ hiện việc cần làm hôm nay, theo thứ tự giờ.
+Tick hoàn thành; hiện thanh tiến độ của ngày.
+C3. Pomodoro gắn với lịch
+Bấm vào một khối việc trong lịch để mở đồng hồ đếm giờ (ví dụ 25/5 hoặc 50/10).
+Tự ghi lại thời gian thực tế vào khối việc đó; dữ liệu này cấp cho AI học hệ số bù và giờ vàng.
+Hết giờ: hỏi "Xong chưa?", nếu chưa thì báo AI để dồn lịch.
+C4. Tiến độ và Streak
+Thanh tiến độ cho từng task lớn (ví dụ Assignment Marketing: 4/7 bước).
+Streak: chuỗi ngày liên tiếp hoàn thành đủ kế hoạch; huy hiệu mốc 7, 14, 30 ngày.
+C5. Báo cáo tuần / tháng
+Tổng số giờ đã làm, số bước hoàn thành, tỷ lệ đúng kế hoạch.
+Biểu đồ thời gian theo môn; ngày nào làm hiệu quả nhất; so sánh với tuần/tháng trước.
+Bên cạnh có nút "Nhờ AI nhận xét" để AI tóm tắt và gợi ý cải thiện.
+C6. Cảnh báo rủi ro (hiển thị trực quan)
+Banner đỏ/vàng trên lịch khi có ngày quá tải hoặc deadline dồn cục (dữ liệu do AI ở B5 phân tích).
+Thanh mức tải mỗi tuần (nhẹ / vừa / nặng / quá tải) và bấm vào để xem gợi ý.
+Deadline sắp tới hiện đếm ngược, kèm trạng thái "Kịp / Nguy cơ / Không kịp".
+C7. Nhắc nhở
+Email: tối hôm trước gửi kế hoạch ngày mai; nhắc trước deadline 24h.
+Web Push / PWA: thông báo trên trình duyệt và điện thoại.
+Uống nước
+C8. Cài đặt cá nhân
+Lịch cố định (thêm/sửa/xóa), giờ ngủ, giờ ăn, số giờ tối đa mỗi ngày.
+Ngày nghỉ được bảo vệ, chế độ sáng/tối, kênh nhắc nhở.
+C9. Sắp xếp lịch dự phòng
+Cập nhật lịch liên tục và đề xuất lịch dự phòng dựa theo tiến độ để đề xuất ra lịch trình mới (theo tùy chọn người dùng) nếu chưa thể hoàn thành tiến độ
+Tóm tắt:
+Web làm được gì? Người dùng chỉ cần nhắn công việc vào chat, AI tự chia nhỏ, xếp vào lịch thật, sửa lại khi có thay đổi và cảnh báo khi quá tải. Web hiển thị kết quả bằng lịch, checklist hôm nay, Pomodoro, tiến độ, streak và báo cáo, đồng thời nhắc việc qua email/Telegram và xuất sang Google Calendar.
+Giải quyết vấn đề gì? Người dùng không thiếu nơi ghi task, mà thiếu người chia nhỏ, cân đối và xếp lịch giúp họ, rồi tự điều chỉnh khi cuộc sống thay đổi.

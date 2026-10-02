@@ -1,0 +1,82 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. Bảng Người dùng & Tài khoản
+model User {
+  id             String          @id @default(uuid())
+  email          String          @unique
+  password       String
+  name           String
+  avatar         String          @default("🧑‍💻")
+  streakDays     Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  tasks          Task[]
+  fixedSchedules FixedSchedule[]
+  chatMessages   ChatMessage[]
+}
+
+// 2. Lịch cố định (Thời khóa biểu, sinh hoạt cá nhân của từng user)
+model FixedSchedule {
+  id          String   @id @default(uuid())
+  userId      String?
+  userEmail   String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  dayOfWeek   Int      // 1: Thứ 2 -> 7: Chủ Nhật
+  startTime   String   // "08:00"
+  endTime     String   // "11:30"
+  color       String   @default("#3b82f6")
+  createdAt   DateTime @default(now())
+}
+
+// 3. Task lớn (Deadline cần hoàn thành của từng user)
+model Task {
+  id          String    @id @default(uuid())
+  userId      String?
+  userEmail   String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  subject     String?
+  deadline    DateTime
+  priority    String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status      String    @default("TODO")   // TODO, IN_PROGRESS, DONE
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  subtasks    Subtask[]
+}
+
+// 4. Khối công việc chi tiết do AI xếp lịch
+model Subtask {
+  id          String    @id @default(uuid())
+  taskId      String
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title       String
+  stepOrder   Int       @default(1)
+  startTime   DateTime
+  endTime     DateTime
+  durationMin Int       @default(45)
+  actualMin   Int       @default(0)
+  status      String    @default("TODO") // TODO, DONE, MISSED
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// 5. Lịch sử hội thoại với Trợ lý AI của từng user
+model ChatMessage {
+  id        String   @id @default(uuid())
+  userId    String?
+  userEmail String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   // "user" | "assistant"
+  content   String
+  metadata  String?  // Lưu trữ JSON action đã thực hiện
+  createdAt DateTime @default(now())
+}
+
