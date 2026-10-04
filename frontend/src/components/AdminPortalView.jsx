@@ -66,36 +66,10 @@ export default function AdminPortalView({ onBackToStudentApp, user, onLogout }) 
         api.getAdminFeedbacks().catch(() => ({ feedbacks: [] }))
       ]);
 
-      setStats(st || {
-        totalUsers: 3,
-        activeToday: 2,
-        totalTasks: 8,
-        totalSubtasks: 24,
-        doneSubtasks: 9,
-        completionRate: 38,
-        aiCallCount: 32,
-        estimatedCostUsd: '0.0048',
-        feedbackCount: 2,
-        freeUsersCount: 2,
-        proUsersCount: 1
-      });
-
-      setUsers(us?.users?.length ? us.users : [
-        { id: 'u-1', name: 'Khoái Vũ', email: 'khoai@student.edu.vn', role: 'ADMIN', plan: 'PRO', isLocked: false, streakDays: 3, createdAt: '2026-10-01T08:00:00.000Z' },
-        { id: 'u-2', name: 'Linh Trần', email: 'linh@student.edu.vn', role: 'USER', plan: 'FREE', isLocked: false, streakDays: 7, createdAt: '2026-10-02T09:30:00.000Z' },
-        { id: 'u-3', name: 'Minh Hoàng', email: 'hoang@student.edu.vn', role: 'USER', plan: 'FREE', isLocked: false, streakDays: 1, createdAt: '2026-10-03T14:15:00.000Z' }
-      ]);
-
-      setTemplates(tpl?.templates?.length ? tpl.templates : [
-        { id: 'tpl-1', name: 'Bài Luận / Tiểu Luận Nghiên Cứu', durationDays: 7, subtasks: ['Thu thập tài liệu & lập dàn ý (60m)', 'Viết phần mở đầu & chương 1 (90m)', 'Viết thân bài & kết luận (120m)', 'Soát lỗi chính tả & đạo văn (45m)'] },
-        { id: 'tpl-2', name: 'Ôn Thi Cuối Kỳ (Final Exam)', durationDays: 5, subtasks: ['Tổng hợp lý thuyết & mindmap (60m)', 'Giải bài tập mẫu & đề năm trước (90m)', 'Làm đề thi thử bấm giờ (90m)', 'Xem lại các câu sai & củng cố (45m)'] },
-        { id: 'tpl-3', name: 'Đồ Án Nhóm (Team Project)', durationDays: 14, subtasks: ['Họp phân chia công việc & thiết kế (90m)', 'Phát triển chức năng cá nhân (120m)', 'Tích hợp & chạy thử nghiệm (90m)', 'Làm slide & quay video demo (60m)'] }
-      ]);
-
-      setFeedbacks(fb?.feedbacks?.length ? fb.feedbacks : [
-        { id: 'fb-1', userName: 'Khoái Vũ', email: 'khoai@student.edu.vn', type: 'FEEDBACK', message: 'Giao diện Dark mode rất dịu mắt, AI xếp lịch rất chuẩn!', createdAt: new Date(Date.now() - 3600000).toISOString() },
-        { id: 'fb-2', userName: 'Linh Trần', email: 'linh@student.edu.vn', type: 'FEATURE_REQUEST', message: 'Hy vọng có thêm xuất lịch sang Google Calendar và kéo thả task.', createdAt: new Date(Date.now() - 86400000).toISOString() }
-      ]);
+      if (st) setStats(st);
+      if (us?.users) setUsers(us.users);
+      if (tpl?.templates) setTemplates(tpl.templates);
+      if (fb?.feedbacks) setFeedbacks(fb.feedbacks);
     } catch (e) {
       console.error('Error loading admin data:', e);
     } finally {
@@ -306,9 +280,9 @@ export default function AdminPortalView({ onBackToStudentApp, user, onLogout }) 
                     <span>Tổng Người Dùng</span>
                     <Users className="w-4 h-4 text-emerald-400" />
                   </div>
-                  <div className="text-3xl font-black text-white">{stats?.totalUsers || 3}</div>
+                  <div className="text-3xl font-black text-white">{stats?.totalUsers ?? users.length}</div>
                   <div className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
-                    <span>● {stats?.activeToday || 2} user hoạt động hôm nay</span>
+                    <span>● {stats?.activeToday ?? users.length} user trong cơ sở dữ liệu</span>
                   </div>
                 </div>
 
@@ -317,9 +291,9 @@ export default function AdminPortalView({ onBackToStudentApp, user, onLogout }) 
                     <span>Tỷ Lệ Hoàn Thành Kế Hoạch</span>
                     <TrendingUp className="w-4 h-4 text-purple-400" />
                   </div>
-                  <div className="text-3xl font-black text-purple-400">{stats?.completionRate || 0}%</div>
+                  <div className="text-3xl font-black text-purple-400">{stats?.completionRate ?? 0}%</div>
                   <div className="text-[11px] text-slate-400">
-                    {stats?.doneSubtasks || 0}/{stats?.totalSubtasks || 0} bước việc đã xong
+                    {stats?.doneSubtasks ?? 0}/{stats?.totalSubtasks ?? 0} bước việc đã xong
                   </div>
                 </div>
 
@@ -328,7 +302,7 @@ export default function AdminPortalView({ onBackToStudentApp, user, onLogout }) 
                     <span>Số Lượt Gọi Gemini AI</span>
                     <Cpu className="w-4 h-4 text-amber-400" />
                   </div>
-                  <div className="text-3xl font-black text-amber-400">{stats?.aiCallCount || 32}</div>
+                  <div className="text-3xl font-black text-amber-400">{stats?.aiCallCount ?? 0}</div>
                   <div className="text-[11px] text-slate-400">Mô hình Gemini Flash Lite</div>
                 </div>
 
@@ -337,8 +311,8 @@ export default function AdminPortalView({ onBackToStudentApp, user, onLogout }) 
                     <span>Chi Phí Vận Hành AI</span>
                     <DollarSign className="w-4 h-4 text-emerald-400" />
                   </div>
-                  <div className="text-3xl font-black text-emerald-400">${stats?.estimatedCostUsd || '0.0048'}</div>
-                  <div className="text-[11px] text-emerald-400 font-bold">Tiết kiệm ~95% chi phí</div>
+                  <div className="text-3xl font-black text-emerald-400">${stats?.estimatedCostUsd ?? '0.0000'}</div>
+                  <div className="text-[11px] text-emerald-400 font-bold">Ước tính theo token thực tế</div>
                 </div>
               </div>
 

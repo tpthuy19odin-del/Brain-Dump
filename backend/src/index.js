@@ -1341,22 +1341,25 @@ app.get('/api/admin/stats', async (req, res) => {
     let totalTasks = 0;
     let totalSubtasks = 0;
     let doneSubtasks = 0;
+    let aiCallCount = 0;
 
     try {
       totalUsers = await prisma.user.count();
       totalTasks = await prisma.task.count();
       totalSubtasks = await prisma.subtask.count();
       doneSubtasks = await prisma.subtask.count({ where: { status: 'DONE' } });
+      aiCallCount = await prisma.chatMessage.count();
     } catch (e) {
-      totalUsers = memoryStore.users?.length || 2;
-      totalTasks = memoryStore.tasks?.length || 5;
-      totalSubtasks = memoryStore.subtasks?.length || 12;
-      doneSubtasks = memoryStore.subtasks?.filter(s => s.status === 'DONE').length || 4;
+      totalUsers = memoryStore.users?.length || 1;
+      totalTasks = memoryStore.tasks?.length || 0;
+      totalSubtasks = memoryStore.subtasks?.length || 0;
+      doneSubtasks = memoryStore.subtasks?.filter(s => s.status === 'DONE').length || 0;
+      aiCallCount = memoryStore.messages?.length || 0;
     }
 
     const completionRate = totalSubtasks > 0 ? Math.round((doneSubtasks / totalSubtasks) * 100) : 0;
-    const aiCallCount = (totalTasks * 3) + 14; // Estimated calls
     const estimatedCostUsd = (aiCallCount * 0.00015).toFixed(4); // Gemini Flash Lite cost estimation
+    const proUsersCount = 1;
 
     res.json({
       totalUsers: Math.max(totalUsers, 1),
@@ -1368,8 +1371,8 @@ app.get('/api/admin/stats', async (req, res) => {
       aiCallCount,
       estimatedCostUsd,
       feedbackCount: systemFeedbacks.length,
-      freeUsersCount: Math.max(1, totalUsers - 1),
-      proUsersCount: 1
+      freeUsersCount: Math.max(0, totalUsers - proUsersCount),
+      proUsersCount
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1381,24 +1384,38 @@ app.get('/api/admin/users', async (req, res) => {
   try {
     let users = [];
     try {
-      users = await prisma.user.findMany({ select: { id: true, name: true, email: true, role: true, streakDays: true, createdAt: true } });
+      const dbUsers = await prisma.user.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+          tasks: { select: { id: true } }
+        }
+      });
+      users = dbUsers.map(u => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role || (u.email.includes('admin') ? 'ADMIN' : 'USER'),
+        plan: u.email.includes('admin') ? 'PRO' : 'FREE',
+        isLocked: false,
+        streakDays: u.streakDays || 1,
+        taskCount: u.tasks?.length || 0,
+        createdAt: u.createdAt || new Date().toISOString()
+      }));
     } catch (e) {
-      users = memoryStore.users || [];
+      users = (memoryStore.users || []).map(u => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role || (u.email.includes('admin') ? 'ADMIN' : 'USER'),
+        plan: u.email.includes('admin') ? 'PRO' : 'FREE',
+        isLocked: false,
+        streakDays: u.streakDays || 1,
+        taskCount: memoryStore.tasks?.filter(t => t.userEmail === u.email)?.length || 0,
+        createdAt: u.createdAt || new Date().toISOString()
+      }));
     }
 
-    // Map users with plan & status
-    const result = users.map((u, idx) => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      role: u.role || (idx === 0 ? 'ADMIN' : 'USER'),
-      plan: idx === 0 ? 'PRO' : 'FREE',
-      isLocked: false,
-      streakDays: u.streakDays || 1,
-      createdAt: u.createdAt || new Date().toISOString()
-    }));
-
-    res.json({ users: result });
+    res.json({ users });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
