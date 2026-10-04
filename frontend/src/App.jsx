@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Bot, Sparkles, ChevronLeft } from 'lucide-react';
 import { api } from './api/client';
 import { useToast } from './context/ToastContext';
 import Sidebar from './components/Sidebar';
@@ -13,10 +14,21 @@ import AuthModal from './components/AuthModal';
 import PomodoroModal from './components/PomodoroModal';
 import StatsModal from './components/StatsModal';
 import SettingsModal from './components/SettingsModal';
+import OnboardingModal from './components/OnboardingModal';
+import WhatIfModal from './components/WhatIfModal';
+import FeedbackModal from './components/FeedbackModal';
+import AdminPortalView from './components/AdminPortalView';
 
 export default function App() {
   const { showToast } = useToast();
+  const [currentPortal, setCurrentPortal] = useState('student'); // 'student' | 'admin'
   const [activeNav, setActiveNav] = useState('home');
+  const [isChatOpen, setIsChatOpen] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showWhatIf, setShowWhatIf] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('brain_dump_user');
     if (saved) {
@@ -29,7 +41,6 @@ export default function App() {
     return null; // Guest state
   });
   
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [subtasks, setSubtasks] = useState([]);
@@ -298,11 +309,23 @@ export default function App() {
     setUser(userData);
     localStorage.setItem('brain_dump_user', JSON.stringify(userData));
     localStorage.setItem('brain_dump_token', token);
-    showToast({
-      type: 'success',
-      title: 'Đăng nhập thành công',
-      message: `Chào mừng ${userData.name} (${userData.email}) đã đăng nhập hệ thống!`
-    });
+
+    const isAdminUser = userData?.role === 'ADMIN' || userData?.email?.toLowerCase()?.includes('admin');
+    if (isAdminUser) {
+      setCurrentPortal('admin');
+      showToast({
+        type: 'success',
+        title: '🛡️ Quyền Quản Trị Viên (Admin)',
+        message: `Chào mừng ${userData.name}! Đã đăng nhập và tự động mở Phân hệ Quản trị Admin.`
+      });
+    } else {
+      setCurrentPortal('student');
+      showToast({
+        type: 'success',
+        title: 'Đăng nhập thành công',
+        message: `Chào mừng ${userData.name} (${userData.email}) đã đăng nhập hệ thống!`
+      });
+    }
     // Immediately refetch all fresh data for the newly logged-in user
     await loadAllData();
   };
@@ -311,6 +334,7 @@ export default function App() {
     setUser(null);
     localStorage.removeItem('brain_dump_user');
     localStorage.removeItem('brain_dump_token');
+    setCurrentPortal('student');
     
     // Clear old user's data from UI state
     setTasks([]);
@@ -336,10 +360,45 @@ export default function App() {
     setShowAuthModal(true);
   };
 
+  const handleUpdateSubtaskTime = async (id, startTime) => {
+    try {
+      await api.updateSubtask(id, { startTime });
+      const [ts, sts, st] = await Promise.all([
+        api.getTasks(),
+        api.getSubtasks(),
+        api.getStats()
+      ]);
+      setTasks(ts);
+      setSubtasks(sts);
+      setStats(st);
+    } catch (e) {
+      console.error('Update subtask time error:', e);
+    }
+  };
+
+  // If in Admin Subsystem, render full standalone Admin Portal
+  if (currentPortal === 'admin') {
+    return (
+      <AdminPortalView
+        user={user}
+        onBackToStudentApp={() => setCurrentPortal('student')}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
   return (
-    <div className="h-screen w-screen flex overflow-hidden bg-[#fafdfa] text-slate-800 font-['Plus_Jakarta_Sans',sans-serif]">
+    <div className="h-screen w-screen flex overflow-hidden bg-[#fafdfa] dark:bg-[#080d0b] text-slate-800 dark:text-[#e2ede6] font-['Plus_Jakarta_Sans',sans-serif] transition-colors duration-200">
       {/* 1. Left Navigation Sidebar */}
-      <Sidebar activeNav={activeNav} setActiveNav={setActiveNav} />
+      <Sidebar 
+        activeNav={activeNav} 
+        setActiveNav={setActiveNav}
+        onOpenOnboarding={() => setShowOnboarding(true)}
+        onOpenWhatIf={() => setShowWhatIf(true)}
+        onOpenFeedback={() => setShowFeedback(true)}
+        onOpenAdmin={() => setCurrentPortal('admin')}
+        user={user}
+      />
 
       {/* 2. Main Content Area according to activeNav */}
       <main className="flex-1 flex flex-col h-full overflow-hidden">
@@ -363,6 +422,10 @@ export default function App() {
             fixedSchedules={fixedSchedules}
             onOpenPomodoro={(task) => setActivePomodoroTask(task)}
             onToggleSubtaskStatus={handleToggleSubtask}
+            onUpdateSubtaskTime={handleUpdateSubtaskTime}
+            onUndoSuccess={loadAllData}
+            isChatOpen={isChatOpen}
+            onToggleChat={() => setIsChatOpen(!isChatOpen)}
           />
         )}
 
@@ -403,12 +466,45 @@ export default function App() {
         )}
       </main>
 
-      {/* 3. Right AI Assistant Panel */}
-      <AIAssistantSidebar
-        messages={messages}
-        onSendMessage={handleSendMessage}
-        isLoading={isLoadingChat}
-      />
+      {/* 3. Right AI Assistant Panel (Collapsible) */}
+      {isChatOpen ? (
+        <AIAssistantSidebar
+          messages={messages}
+          onSendMessage={handleSendMessage}
+          isLoading={isLoadingChat}
+          onClose={() => setIsChatOpen(false)}
+        />
+      ) : (
+        <aside className="w-12 h-full bg-white dark:bg-[#0e1512] border-l border-[#e3ece5] dark:border-[#1d2c26] flex flex-col items-center py-4 justify-between shrink-0 select-none shadow-xs transition-colors duration-200">
+          <button
+            onClick={() => setIsChatOpen(true)}
+            className="w-8 h-8 rounded-xl bg-[#e5f4e8] dark:bg-[#1b3d2f] text-[#1b4d3e] dark:text-emerald-400 hover:bg-[#1b4d3e] hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white flex items-center justify-center transition shadow-2xs cursor-pointer group"
+            title="Mở rộng Trợ lý AI"
+          >
+            <Bot className="w-4 h-4 group-hover:scale-110 transition-transform" />
+          </button>
+          
+          {/* Vertical Label */}
+          <button
+            onClick={() => setIsChatOpen(true)}
+            className="py-6 px-1 rounded-xl hover:bg-slate-100 dark:hover:bg-[#16241e] text-slate-500 dark:text-slate-400 hover:text-[#1b4d3e] dark:hover:text-emerald-300 transition cursor-pointer flex flex-col items-center gap-3"
+            title="Mở rộng Trợ lý AI"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
+            <span className="text-[11px] font-bold tracking-widest uppercase [writing-mode:vertical-lr] rotate-180">
+              AI Chat
+            </span>
+          </button>
+
+          <button
+            onClick={() => setIsChatOpen(true)}
+            className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-[#16241e] hover:bg-emerald-50 dark:hover:bg-[#1e332a] text-slate-600 dark:text-emerald-300 flex items-center justify-center transition cursor-pointer"
+            title="Mở rộng Trợ lý AI"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        </aside>
+      )}
 
       {/* Auth Modal (Đăng Nhập / Đăng Ký) */}
       <AuthModal
@@ -425,6 +521,27 @@ export default function App() {
           onFinishPomodoro={handleFinishPomodoro}
         />
       )}
+
+      {/* 3-Step Onboarding Modal */}
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onAskAI={handleSendMessage}
+      />
+
+      {/* What-If Sandbox Simulator Modal */}
+      <WhatIfModal
+        isOpen={showWhatIf}
+        onClose={() => setShowWhatIf(false)}
+        onApplyScenario={(prompt) => handleSendMessage(prompt)}
+      />
+
+      {/* User Feedback & Bug Report Modal */}
+      <FeedbackModal
+        isOpen={showFeedback}
+        onClose={() => setShowFeedback(false)}
+        user={user}
+      />
     </div>
   );
 }

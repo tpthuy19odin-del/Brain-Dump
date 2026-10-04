@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Play, 
@@ -102,7 +102,6 @@ export default function PomodoroModal({ subtask, onClose, onFinishPomodoro }) {
 
   const toggleTimer = () => {
     if (!isRunning && strictLock && !document.fullscreenElement) {
-      // Auto enter fullscreen when start if strict mode is active
       document.documentElement.requestFullscreen().catch(() => {});
       setIsFullscreen(true);
     }
@@ -151,7 +150,7 @@ export default function PomodoroModal({ subtask, onClose, onFinishPomodoro }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 select-none animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-8 relative border border-slate-200 shadow-2xl">
+      <div className="bg-white dark:bg-[#101915] w-full max-w-lg rounded-3xl p-6 sm:p-8 relative border border-slate-200 dark:border-[#1d2c26] shadow-2xl">
         
         {/* Top Header Actions */}
         <div className="flex items-center justify-between mb-4">
@@ -161,19 +160,19 @@ export default function PomodoroModal({ subtask, onClose, onFinishPomodoro }) {
               onClick={() => !isRunning && setStrictLock(!strictLock)}
               className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black transition cursor-pointer ${
                 strictLock 
-                  ? 'bg-rose-50 text-rose-700 border border-rose-200 shadow-xs' 
-                  : 'bg-slate-100 text-slate-600 border border-slate-200'
+                  ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 shadow-xs' 
+                  : 'bg-slate-100 dark:bg-[#182720] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#22362d]'
               }`}
               title={isRunning ? 'Đang trong phiên, không thể tắt khóa' : 'Bật/tắt chế độ khóa nghiêm ngặt không cho rời màn hình'}
             >
-              {strictLock ? <Lock className="w-3 h-3 text-rose-600" /> : <Unlock className="w-3 h-3 text-slate-500" />}
+              {strictLock ? <Lock className="w-3 h-3 text-rose-600 dark:text-rose-400" /> : <Unlock className="w-3 h-3 text-slate-500" />}
               <span>{strictLock ? 'Khóa Tập Trung Bật' : 'Khóa Tự Do'}</span>
             </button>
 
             {/* Fullscreen Button */}
             <button
               onClick={toggleFullscreen}
-              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+              className="p-1.5 rounded-lg bg-slate-100 dark:bg-[#182720] hover:bg-slate-200 dark:hover:bg-[#20352c] text-slate-700 dark:text-slate-200 transition"
               title={isFullscreen ? 'Thu nhỏ' : 'Bật toàn màn hình'}
             >
               {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -185,8 +184,8 @@ export default function PomodoroModal({ subtask, onClose, onFinishPomodoro }) {
             onClick={handleCloseAttempt}
             className={`p-2 rounded-full transition cursor-pointer ${
               isRunning && strictLock
-                ? 'bg-rose-100 text-rose-600 hover:bg-rose-200'
-                : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 hover:bg-rose-200'
+                : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#182720]'
             }`}
             title={isRunning && strictLock ? 'Khóa màn hình đang bật' : 'Đóng'}
           >
@@ -196,14 +195,14 @@ export default function PomodoroModal({ subtask, onClose, onFinishPomodoro }) {
 
         {/* Distraction Alert Banner */}
         {showWarningAlert && (
-          <div className="mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 flex items-center justify-between text-xs font-bold animate-bounce">
+          <div className="mb-4 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 flex items-center justify-between text-xs font-bold animate-bounce">
             <div className="flex items-center space-x-2">
-              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+              <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
               <span>🚨 Phát hiện bạn vừa rời màn hình ({distractionCount} lần)! Hãy tập trung học nào!</span>
             </div>
             <button
               onClick={() => setShowWarningAlert(false)}
-              className="px-2 py-0.5 rounded bg-amber-200 hover:bg-amber-300 text-amber-900 text-[10px]"
+              className="px-2 py-0.5 rounded bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 text-[10px]"
             >
               Đã hiểu
             </button>
@@ -212,14 +211,14 @@ export default function PomodoroModal({ subtask, onClose, onFinishPomodoro }) {
 
         {/* Task Title & Details */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center space-x-1.5 px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-black mb-2 border border-emerald-200 shadow-2xs">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+          <div className="inline-flex items-center space-x-1.5 px-3.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-black mb-2 border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>PHIÊN TẬP TRUNG POMODORO</span>
           </div>
-          <h3 className="text-lg sm:text-xl font-black text-slate-900 line-clamp-2 px-4 leading-snug">
+          <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-[#f0fdf4] line-clamp-2 px-4 leading-snug">
             {subtask?.title || 'Tập trung học tập'}
           </h3>
-          <p className="text-xs text-slate-500 font-bold mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-1">
             🏷️ {subtask?.taskSubject || 'Học tập'} • ⏰ Kế hoạch: {subtask?.durationMin || 25} phút
           </p>
         </div>
@@ -232,7 +231,7 @@ export default function PomodoroModal({ subtask, onClose, onFinishPomodoro }) {
             className={`px-4 py-1.5 rounded-xl text-xs font-black transition cursor-pointer disabled:opacity-60 ${
               mode === 25
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                : 'bg-slate-100 dark:bg-[#182720] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#20352c]'
             }`}
           >
             25 Phút (Chuẩn)
@@ -243,7 +242,7 @@ export default function PomodoroModal({ subtask, onClose, onFinishPomodoro }) {
             className={`px-4 py-1.5 rounded-xl text-xs font-black transition cursor-pointer disabled:opacity-60 ${
               mode === 50
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                : 'bg-slate-100 dark:bg-[#182720] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#20352c]'
             }`}
           >
             50 Phút (Chuyên sâu)
@@ -260,7 +259,7 @@ export default function PomodoroModal({ subtask, onClose, onFinishPomodoro }) {
                 r="95"
                 stroke="currentColor"
                 strokeWidth="12"
-                className="text-slate-100"
+                className="text-slate-100 dark:text-[#192b23]"
                 fill="transparent"
               />
               <circle
@@ -280,17 +279,17 @@ export default function PomodoroModal({ subtask, onClose, onFinishPomodoro }) {
             </svg>
 
             <div className="absolute flex flex-col items-center text-center">
-              <span className="text-4xl sm:text-5xl font-black text-slate-900 font-mono tracking-tight">
+              <span className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-[#f0fdf4] font-mono tracking-tight">
                 {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
               </span>
               <span className={`text-[11px] font-extrabold mt-1.5 uppercase px-2.5 py-0.5 rounded-full ${
-                isRunning ? 'bg-emerald-100 text-emerald-800 animate-pulse' : 'bg-slate-100 text-slate-500'
+                isRunning ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 animate-pulse' : 'bg-slate-100 dark:bg-[#182720] text-slate-500 dark:text-slate-400'
               }`}>
                 {isRunning ? '🔥 Đang tập trung...' : 'Đã tạm dừng'}
               </span>
 
               {distractionCount > 0 && (
-                <span className="text-[10px] font-bold text-amber-700 mt-1">
+                <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 mt-1">
                   Mất tập trung: {distractionCount} lần
                 </span>
               )}
@@ -302,7 +301,7 @@ export default function PomodoroModal({ subtask, onClose, onFinishPomodoro }) {
         <div className="flex items-center justify-center space-x-4 mb-6">
           <button
             onClick={resetTimer}
-            className="p-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition cursor-pointer"
+            className="p-3.5 rounded-2xl bg-slate-100 dark:bg-[#182720] hover:bg-slate-200 dark:hover:bg-[#20352c] text-slate-600 dark:text-slate-300 transition cursor-pointer"
             title="Đặt lại từ đầu"
           >
             <RotateCcw className="w-5 h-5" />
@@ -324,15 +323,14 @@ export default function PomodoroModal({ subtask, onClose, onFinishPomodoro }) {
         {/* Mark Done & Record Time */}
         <button
           onClick={handleCompleteTask}
-          className="w-full py-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 text-xs font-black flex items-center justify-center space-x-2 transition cursor-pointer shadow-xs"
+          className="w-full py-3 rounded-2xl bg-emerald-50 dark:bg-[#14291f] hover:bg-emerald-100 dark:hover:bg-[#1a382a] border border-emerald-200 dark:border-[#224732] text-emerald-900 dark:text-emerald-300 text-xs font-black flex items-center justify-center space-x-2 transition cursor-pointer shadow-xs"
         >
-          <CheckCircle className="w-4 h-4 text-emerald-600" />
+          <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           <span>Đánh dấu xong khối này & Ghi nhận thời gian</span>
         </button>
 
-        {/* Strict Lock Reminder Footer */}
         {strictLock && (
-          <p className="text-[10px] font-semibold text-slate-400 text-center mt-3">
+          <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 text-center mt-3">
             🔒 Chế độ khóa nghiêm ngặt đang bật: Tự động cảnh báo khi bạn chuyển tab hoặc rời ứng dụng.
           </p>
         )}
@@ -341,14 +339,14 @@ export default function PomodoroModal({ subtask, onClose, onFinishPomodoro }) {
       {/* Strict Quit Confirmation Dialog */}
       {showQuitConfirm && (
         <div className="fixed inset-0 z-60 bg-black/70 flex items-center justify-center p-4 animate-in zoom-in-95 duration-150">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border border-rose-200">
-            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3">
+          <div className="bg-white dark:bg-[#101915] rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border border-rose-200 dark:border-rose-900">
+            <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto mb-3">
               <AlertTriangle className="w-6 h-6" />
             </div>
-            <h4 className="font-black text-slate-900 text-base mb-1">
+            <h4 className="font-black text-slate-900 dark:text-[#f0fdf4] text-base mb-1">
               Bạn có chắc muốn từ bỏ giữa chừng?
             </h4>
-            <p className="text-xs text-slate-600 font-medium mb-5 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium mb-5 leading-relaxed">
               Phiên học đang diễn ra. Nếu thoát bây giờ, thời gian học sẽ không được ghi nhận vào chuỗi Streak và đánh giá hiệu suất AI!
             </p>
             <div className="flex space-x-2">
@@ -360,7 +358,7 @@ export default function PomodoroModal({ subtask, onClose, onFinishPomodoro }) {
               </button>
               <button
                 onClick={confirmQuit}
-                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-700 font-bold text-xs transition cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-[#182720] hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-600 dark:text-slate-300 hover:text-rose-700 dark:hover:text-rose-300 font-bold text-xs transition cursor-pointer"
               >
                 Vẫn thoát
               </button>

@@ -1,0 +1,37 @@
+{
+  "brand": {
+    "primary": "#1b4d3e",
+    "primaryHover": "#143e31",
+    "activeNav": "#164334",
+    "headings": "#1b3d2f",
+    "accent": "#1b7a53",
+    "moss": "#206652"
+  },
+  "emeraldMint": {
+    "aiBadge": "#10b981",
+    "ctaGreen": "#059669",
+    "glowMint": "#34d399",
+    "softMintActive": "#d8edd9",
+    "pastelGradientStart": "#e5f3e7",
+    "pastelGradientEnd": "#d6ecda",
+    "mintBorder": "#cfe5d2",
+    "ultraLightMintBg": "#f4f9f6"
+  },
+  "darkMode": {
+    "canvasBg": "#080d0b",
+    "panelBg": "#0e1512",
+    "surfaceCard": "#101915",
+    "elevatedCard": "#14201a",
+    "borderOutline": "#1d2c26",
+    "borderStrong": "#263c32",
+    "headingText": "#f0fdf4",
+    "bodyText": "#e2ede6",
+    "mutedText": "#8aa396"
+  },
+  "semantic": {
+    "urgent": "#ef4444",
+    "warning": "#f59e0b",
+    "infoFixedSchedule": "#3b82f6",
+    "deepFocus": "#8b5cf6"
+  }
+}

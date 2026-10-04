@@ -9,6 +9,7 @@ import {
   Sparkles,
   BookOpen
 } from 'lucide-react';
+import ThemeSwitch from './ThemeSwitch';
 
 export default function ProgressView({ stats, tasks = [], subtasks = [], onAskAI }) {
   const streakBadges = [
@@ -18,31 +19,36 @@ export default function ProgressView({ stats, tasks = [], subtasks = [], onAskAI
   ];
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-y-auto bg-[#fafdfa] p-6">
+    <div className="flex-1 flex flex-col h-full overflow-y-auto bg-[#fafdfa] dark:bg-[#080d0b] p-6 transition-colors duration-200">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-black text-[#1b3d2f] flex items-center space-x-2">
-            <TrendingUp className="w-5 h-5 text-[#1b7a53]" />
+          <h2 className="text-xl font-black text-[#1b3d2f] dark:text-[#f0fdf4] flex items-center space-x-2">
+            <TrendingUp className="w-5 h-5 text-[#1b7a53] dark:text-emerald-400" />
             <span>Tiến Độ, Chuỗi Streak & Huy Hiệu</span>
           </h2>
-          <p className="text-xs text-[#5f8070] font-medium mt-0.5">
+          <p className="text-xs text-[#5f8070] dark:text-[#8aa396] font-medium mt-0.5">
             Theo dõi sự tiến bộ hàng ngày và duy trì chuỗi hoàn thành nhiệm vụ
           </p>
         </div>
 
-        <button
-          onClick={() => onAskAI('Nhận xét tiến độ học tập và đề xuất phương án cải thiện cho tuần tới')}
-          className="px-4 py-2 rounded-xl bg-[#1b4d3e] hover:bg-[#143e31] text-white font-bold text-xs flex items-center space-x-1.5 shadow-md shadow-[#1b4d3e]/20 transition"
-        >
-          <Sparkles className="w-4 h-4" />
-          <span>Nhờ AI Đánh Giá</span>
-        </button>
+        <div className="flex items-center space-x-2.5">
+          {/* Dark/Light Quick Toggle Switch */}
+          <ThemeSwitch />
+
+          <button
+            onClick={() => onAskAI('Nhận xét tiến độ học tập và đề xuất phương án cải thiện cho tuần tới')}
+            className="px-4 py-2 rounded-xl bg-[#1b4d3e] dark:bg-emerald-600 hover:bg-[#143e31] dark:hover:bg-emerald-700 text-white font-bold text-xs flex items-center space-x-1.5 shadow-md shadow-[#1b4d3e]/20 transition cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Nhờ AI Đánh Giá</span>
+          </button>
+        </div>
       </div>
 
       <div className="max-w-4xl space-y-6">
         {/* Streak Hero Card */}
-        <div className="p-6 rounded-3xl bg-gradient-to-r from-[#1b4d3e] to-[#256c57] text-white shadow-md flex items-center justify-between">
+        <div className="p-6 rounded-3xl bg-gradient-to-r from-[#1b4d3e] to-[#256c57] dark:from-[#143228] dark:to-[#1b4c3d] text-white shadow-md flex items-center justify-between">
           <div>
             <div className="flex items-center space-x-2 text-xs font-bold text-emerald-200 mb-1">
               <Flame className="w-4 h-4 text-amber-400 fill-amber-400 animate-bounce" />
@@ -60,9 +66,9 @@ export default function ProgressView({ stats, tasks = [], subtasks = [], onAskAI
         </div>
 
         {/* Badges Milestone */}
-        <div className="p-6 rounded-3xl bg-white border border-[#e1ece4] shadow-2xs">
-          <h3 className="text-sm font-extrabold text-[#1b3d2f] mb-4 flex items-center space-x-2">
-            <Award className="w-4 h-4 text-[#1b7a53]" />
+        <div className="p-6 rounded-3xl bg-white dark:bg-[#101915] border border-[#e1ece4] dark:border-[#1d2c26] shadow-2xs">
+          <h3 className="text-sm font-extrabold text-[#1b3d2f] dark:text-[#f0fdf4] mb-4 flex items-center space-x-2">
+            <Award className="w-4 h-4 text-[#1b7a53] dark:text-emerald-400" />
             <span>Huy Hiệu Cột Mốc Streak</span>
           </h3>
 
@@ -72,8 +78,8 @@ export default function ProgressView({ stats, tasks = [], subtasks = [], onAskAI
                 key={b.days}
                 className={`p-4 rounded-2xl border text-center transition ${
                   b.unlocked
-                    ? 'bg-[#ebf8ee] border-[#cfe8d4] text-[#1b4d3e] shadow-2xs'
-                    : 'bg-[#f8faf8] border-slate-200 opacity-60 text-slate-500'
+                    ? 'bg-[#ebf8ee] dark:bg-[#13281e] border-[#cfe8d4] dark:border-[#1e422f] text-[#1b4d3e] dark:text-emerald-300 shadow-2xs'
+                    : 'bg-[#f8faf8] dark:bg-[#141e19] border-slate-200 dark:border-[#1e2d26] opacity-60 text-slate-500 dark:text-slate-400'
                 }`}
               >
                 <div className="text-3xl mb-2">{b.icon}</div>
@@ -89,24 +95,24 @@ export default function ProgressView({ stats, tasks = [], subtasks = [], onAskAI
 
         {/* AI Learning Insights (Giờ Vàng & Hệ Số Bù) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-5 rounded-3xl bg-white border border-[#e1ece4] shadow-2xs space-y-2">
-            <div className="flex items-center space-x-2 text-xs font-extrabold text-[#1b4d3e]">
-              <Zap className="w-4 h-4 text-[#1b7a53]" />
+          <div className="p-5 rounded-3xl bg-white dark:bg-[#101915] border border-[#e1ece4] dark:border-[#1d2c26] shadow-2xs space-y-2">
+            <div className="flex items-center space-x-2 text-xs font-extrabold text-[#1b4d3e] dark:text-emerald-300">
+              <Zap className="w-4 h-4 text-[#1b7a53] dark:text-emerald-400" />
               <span>Khung Giờ Vàng (Golden Hour)</span>
             </div>
-            <p className="text-sm font-black text-[#1b3d2f]">{stats?.goldenHours || '14:00 - 17:00 (Độ tập trung 94%)'}</p>
-            <p className="text-[11px] text-[#5e8271]">
+            <p className="text-sm font-black text-[#1b3d2f] dark:text-slate-100">{stats?.goldenHours || '14:00 - 17:00 (Độ tập trung 94%)'}</p>
+            <p className="text-[11px] text-[#5e8271] dark:text-[#7f9e8f]">
               Dựa vào lịch sử tick hoàn thành Pomodoro, AI tự động xếp các task khó vào khung giờ này để bạn làm nhanh nhất.
             </p>
           </div>
 
-          <div className="p-5 rounded-3xl bg-white border border-[#e1ece4] shadow-2xs space-y-2">
-            <div className="flex items-center space-x-2 text-xs font-extrabold text-[#1b4d3e]">
-              <Clock className="w-4 h-4 text-[#1b7a53]" />
+          <div className="p-5 rounded-3xl bg-white dark:bg-[#101915] border border-[#e1ece4] dark:border-[#1d2c26] shadow-2xs space-y-2">
+            <div className="flex items-center space-x-2 text-xs font-extrabold text-[#1b4d3e] dark:text-emerald-300">
+              <Clock className="w-4 h-4 text-[#1b7a53] dark:text-emerald-400" />
               <span>Hệ Số Bù Thời Gian Thực Tế</span>
             </div>
-            <p className="text-sm font-black text-[#1b3d2f]">{stats?.compensationFactor || '+15% đệm an toàn'}</p>
-            <p className="text-[11px] text-[#5e8271]">
+            <p className="text-sm font-black text-[#1b3d2f] dark:text-slate-100">{stats?.compensationFactor || '+15% đệm an toàn'}</p>
+            <p className="text-[11px] text-[#5e8271] dark:text-[#7f9e8f]">
               Nếu thực tế bạn làm lâu hơn dự tính, AI sẽ tự động cộng thêm hệ số bù vào các lần lập lịch sau để tránh vỡ kế hoạch.
             </p>
           </div>
@@ -115,3 +121,4 @@ export default function ProgressView({ stats, tasks = [], subtasks = [], onAskAI
     </div>
   );
 }
+
