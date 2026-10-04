@@ -42,10 +42,12 @@ export default function Sidebar({
     <aside className="w-56 h-full bg-[#f4f8f5] dark:bg-[#0e1512] border-r border-[#e3ece5] dark:border-[#1d2c26] flex flex-col justify-between p-3.5 sm:p-4 shrink-0 select-none transition-colors duration-200 overflow-y-auto">
       {/* Brand Header & Nav */}
       <div>
-        <div className="flex items-center space-x-2.5 px-2 py-2.5 mb-5">
-          <div className="w-8 h-8 rounded-xl bg-[#1b4d3e] dark:bg-emerald-600 text-white flex items-center justify-center shadow-xs shadow-emerald-900/20">
-            <Sparkles className="w-4 h-4 text-white" />
-          </div>
+        <div className="flex items-center space-x-2.5 px-2 py-2 mb-5">
+          <img 
+            src="/logo.png" 
+            alt="Brain Dump Logo" 
+            className="w-8 h-8 rounded-xl object-contain drop-shadow-xs hover:scale-105 transition-transform" 
+          />
           <h1 className="font-extrabold text-lg text-[#1b4d3e] dark:text-emerald-400 tracking-tight">Brain Dump</h1>
         </div>
 

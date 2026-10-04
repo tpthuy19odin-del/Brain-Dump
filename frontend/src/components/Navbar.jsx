@@ -32,9 +32,11 @@ export default function Navbar({
     <header className="h-16 border-b border-emerald-100 dark:border-[#1e2f27] bg-white/95 dark:bg-[#0e1512]/95 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between z-30 shrink-0 shadow-xs transition-colors duration-200">
       {/* Brand */}
       <div className="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
-        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
-          <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-        </div>
+        <img 
+          src="/logo.png" 
+          alt="Brain Dump Logo" 
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-contain drop-shadow-xs" 
+        />
         <div>
           <div className="flex items-center space-x-1.5 sm:space-x-2">
             <h1 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">Brain Dump</h1>

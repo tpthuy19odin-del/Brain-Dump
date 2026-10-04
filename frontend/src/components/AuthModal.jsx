@@ -94,10 +94,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
         </button>
 
         {/* Brand Header */}
-        <div className="text-center mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-[#1b4d3e] dark:bg-emerald-600 text-white flex items-center justify-center mx-auto mb-3 shadow-md shadow-[#1b4d3e]/20">
-            <Sparkles className="w-6 h-6" />
-          </div>
+          <img 
+            src="/logo.png" 
+            alt="Brain Dump Logo" 
+            className="w-14 h-14 object-contain mx-auto mb-2.5 drop-shadow-md hover:scale-105 transition-transform" 
+          />
           <h3 className="text-xl font-black text-[#1b3d2f] dark:text-[#f0fdf4]">
             {mode === 'login' ? 'Đăng nhập Brain Dump' : 'Đăng ký tài khoản'}
           </h3>

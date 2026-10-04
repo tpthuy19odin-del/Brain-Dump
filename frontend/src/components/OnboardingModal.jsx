@@ -57,10 +57,12 @@ Hãy tự động lưu lịch cố định và chia nhỏ tất cả các bài t
         {/* Header with Progress Steps */}
         <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-[#1d2c26] bg-slate-50/50 dark:bg-[#0e1512] flex items-center justify-between">
           <div>
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white flex items-center justify-center shadow-xs">
-                <Sparkles className="w-4 h-4" />
-              </div>
+            <div className="flex items-center space-x-2.5">
+              <img 
+                src="/logo.png" 
+                alt="Brain Dump Logo" 
+                className="w-8 h-8 rounded-xl object-contain drop-shadow-xs" 
+              />
               <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white">
                 Chào mừng bạn đến với Brain Dump AI
               </h3>
