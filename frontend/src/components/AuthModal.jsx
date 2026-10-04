@@ -94,6 +94,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
         </button>
 
         {/* Brand Header */}
+        <div className="text-center mb-6">
           <img 
             src="/logo.png" 
             alt="Brain Dump Logo" 
