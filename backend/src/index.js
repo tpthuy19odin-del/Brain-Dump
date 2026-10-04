@@ -23,6 +23,11 @@ app.use((req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
+
+  // Auto rewrite requests like /auth/login or /chat to /api/auth/login, /api/chat
+  if (!req.url.startsWith('/api') && !req.url.startsWith('/favicon.ico')) {
+    req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+  }
   next();
 });
 
