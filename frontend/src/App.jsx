@@ -18,6 +18,7 @@ import OnboardingModal from './components/OnboardingModal';
 import WhatIfModal from './components/WhatIfModal';
 import FeedbackModal from './components/FeedbackModal';
 import AdminPortalView from './components/AdminPortalView';
+import UpgradeModal from './components/UpgradeModal';
 
 export default function App() {
   const { showToast } = useToast();
@@ -29,11 +30,16 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showWhatIf, setShowWhatIf] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('brain_dump_user');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const u = JSON.parse(saved);
+        if (u && !u.plan) {
+          u.plan = u.role === 'ADMIN' || u.email?.toLowerCase()?.includes('admin') ? 'PRO' : 'FREE';
+        }
+        return u;
       } catch (e) {
         return null;
       }
@@ -252,6 +258,46 @@ export default function App() {
     }
   };
 
+  const handleDeleteSubtask = async (id) => {
+    try {
+      await api.deleteSubtask(id);
+      const [ts, sts, st] = await Promise.all([
+        api.getTasks(),
+        api.getSubtasks(),
+        api.getStats()
+      ]);
+      setTasks(ts);
+      setSubtasks(sts);
+      setStats(st);
+    } catch (e) {
+      showToast({
+        type: 'error',
+        title: 'Lỗi xóa nhiệm vụ',
+        message: e.message || 'Không thể xóa nhiệm vụ'
+      });
+      throw e;
+    }
+  };
+
+  const handleDeleteFixedSchedule = async (id) => {
+    try {
+      await api.deleteFixedSchedule(id);
+      const [fs, st] = await Promise.all([
+        api.getFixedSchedules(),
+        api.getStats()
+      ]);
+      setFixedSchedules(fs);
+      setStats(st);
+    } catch (e) {
+      showToast({
+        type: 'error',
+        title: 'Lỗi xóa lịch cố định',
+        message: e.message || 'Không thể xóa lịch cố định'
+      });
+      throw e;
+    }
+  };
+
   // Toggle Subtask
   const handleToggleSubtask = async (id, status) => {
     try {
@@ -376,8 +422,9 @@ export default function App() {
     }
   };
 
-  // If in Admin Subsystem, render full standalone Admin Portal
-  if (currentPortal === 'admin') {
+  // If in Admin Subsystem, render full standalone Admin Portal only for Admin
+  const isAdmin = user?.role === 'ADMIN' || user?.email?.toLowerCase()?.includes('admin');
+  if (currentPortal === 'admin' && isAdmin) {
     return (
       <AdminPortalView
         user={user}
@@ -397,6 +444,7 @@ export default function App() {
         onOpenWhatIf={() => setShowWhatIf(true)}
         onOpenFeedback={() => setShowFeedback(true)}
         onOpenAdmin={() => setCurrentPortal('admin')}
+        onOpenUpgrade={() => setShowUpgradeModal(true)}
         user={user}
       />
 
@@ -413,6 +461,9 @@ export default function App() {
             onAskAI={handleSendMessage}
             onOpenAuth={() => setShowAuthModal(true)}
             onLogout={handleLogout}
+            onOpenUpgrade={() => setShowUpgradeModal(true)}
+            onDeleteSubtask={handleDeleteSubtask}
+            onDeleteFixedSchedule={handleDeleteFixedSchedule}
           />
         )}
 
@@ -423,6 +474,8 @@ export default function App() {
             onOpenPomodoro={(task) => setActivePomodoroTask(task)}
             onToggleSubtaskStatus={handleToggleSubtask}
             onUpdateSubtaskTime={handleUpdateSubtaskTime}
+            onDeleteSubtask={handleDeleteSubtask}
+            onDeleteFixedSchedule={handleDeleteFixedSchedule}
             onUndoSuccess={loadAllData}
             isChatOpen={isChatOpen}
             onToggleChat={() => setIsChatOpen(!isChatOpen)}
@@ -462,6 +515,8 @@ export default function App() {
             tasks={tasks}
             subtasks={subtasks}
             onAskAI={handleSendMessage}
+            user={user}
+            onOpenUpgrade={() => setShowUpgradeModal(true)}
           />
         )}
       </main>
@@ -473,6 +528,8 @@ export default function App() {
           onSendMessage={handleSendMessage}
           isLoading={isLoadingChat}
           onClose={() => setIsChatOpen(false)}
+          user={user}
+          onOpenUpgrade={() => setShowUpgradeModal(true)}
         />
       ) : (
         <aside className="w-12 h-full bg-white dark:bg-[#0e1512] border-l border-[#e3ece5] dark:border-[#1d2c26] flex flex-col items-center py-4 justify-between shrink-0 select-none shadow-xs transition-colors duration-200">
@@ -534,6 +591,8 @@ export default function App() {
         isOpen={showWhatIf}
         onClose={() => setShowWhatIf(false)}
         onApplyScenario={(prompt) => handleSendMessage(prompt)}
+        user={user}
+        onOpenUpgrade={() => setShowUpgradeModal(true)}
       />
 
       {/* User Feedback & Bug Report Modal */}
@@ -541,6 +600,14 @@ export default function App() {
         isOpen={showFeedback}
         onClose={() => setShowFeedback(false)}
         user={user}
+      />
+
+      {/* Upgrade / Pricing Comparison Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        user={user}
+        onUserUpdated={(updatedUser) => setUser(updatedUser)}
       />
     </div>
   );

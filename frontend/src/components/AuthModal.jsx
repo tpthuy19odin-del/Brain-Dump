@@ -36,6 +36,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
             email: cleanEmail,
             avatar: isAdm ? '🛡️' : '🧑‍💻',
             role: isAdm ? 'ADMIN' : 'USER',
+            plan: isAdm ? 'PRO' : 'FREE',
             streakDays: 1
           };
           onAuthSuccess(fallbackUser, 'jwt-' + fallbackUser.id);
@@ -53,6 +54,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
               email: cleanEmail,
               avatar: '🛡️',
               role: 'ADMIN',
+              plan: 'PRO',
               streakDays: 99
             };
             onAuthSuccess(adminUser, 'jwt-admin-root');
@@ -63,6 +65,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
               email: 'linh@student.edu.vn',
               avatar: '👩‍🎓',
               role: 'USER',
+              plan: 'FREE',
               streakDays: 7
             };
             onAuthSuccess(studentUser, 'jwt-user-default');

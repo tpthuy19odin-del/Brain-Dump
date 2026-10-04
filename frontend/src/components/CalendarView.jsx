@@ -12,21 +12,14 @@ import {
   Maximize2,
   Calendar,
   RotateCcw,
-  GripVertical
+  GripVertical,
+  Trash2,
+  X,
+  Loader2
 } from 'lucide-react';
 import ThemeSwitch from './ThemeSwitch';
 import { useToast } from '../context/ToastContext';
 import { api } from '../api/client';
-
-const DAYS_OF_WEEK = [
-  { id: 1, name: 'Thứ 2', short: 'T2' },
-  { id: 2, name: 'Thứ 3', short: 'T3' },
-  { id: 3, name: 'Thứ 4', short: 'T4' },
-  { id: 4, name: 'Thứ 5', short: 'T5' },
-  { id: 5, name: 'Thứ 6', short: 'T6' },
-  { id: 6, name: 'Thứ 7', short: 'T7' },
-  { id: 7, name: 'Chủ Nhật', short: 'CN' }
-];
 
 function formatTime24(isoStr) {
   try {
@@ -43,16 +36,62 @@ export default function CalendarView({
   onOpenPomodoro,
   onToggleSubtaskStatus,
   onUpdateSubtaskTime,
+  onDeleteSubtask,
+  onDeleteFixedSchedule,
   onUndoSuccess,
   isChatOpen,
   onToggleChat
 }) {
   const [viewMode, setViewMode] = useState('week'); // 'week' | 'day' | 'month'
   const [selectedDayId, setSelectedDayId] = useState(2); // Tuesday
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = current week, -1 = prev week, 1 = next week
   const [draggingId, setDraggingId] = useState(null);
   const [dragOverDay, setDragOverDay] = useState(null);
   const [isUndoing, setIsUndoing] = useState(false);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, item: null, type: 'subtask', isDeleting: false });
   const { showToast } = useToast();
+
+  // Helper to calculate dynamic day of week and exact date (e.g. Thứ 2, 05/10)
+  const getDayInfo = (dayId) => {
+    const now = new Date();
+    const curDay = now.getDay() === 0 ? 7 : now.getDay();
+    const diff = (dayId - curDay) + (weekOffset * 7);
+    const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
+    
+    const dayNames = {
+      1: 'Thứ 2',
+      2: 'Thứ 3',
+      3: 'Thứ 4',
+      4: 'Thứ 5',
+      5: 'Thứ 6',
+      6: 'Thứ 7',
+      7: 'Chủ Nhật'
+    };
+    const dayShorts = {
+      1: 'T2',
+      2: 'T3',
+      3: 'T4',
+      4: 'T5',
+      5: 'T6',
+      6: 'T7',
+      7: 'CN'
+    };
+
+    const dateStr = `${targetDate.getDate().toString().padStart(2, '0')}/${(targetDate.getMonth() + 1).toString().padStart(2, '0')}`;
+    const isToday = weekOffset === 0 && dayId === curDay;
+
+    return {
+      id: dayId,
+      name: dayNames[dayId],
+      short: dayShorts[dayId],
+      dateStr,
+      fullDisplay: `${dayNames[dayId]} (${dateStr})`,
+      isToday,
+      targetDate
+    };
+  };
+
+  const currentWeekDays = [1, 2, 3, 4, 5, 6, 7].map(getDayInfo);
 
   const getFixedForDay = (dayId) => {
     return fixedSchedules.filter(fs => fs.dayOfWeek === dayId);
@@ -83,7 +122,7 @@ export default function CalendarView({
     // Calculate new date for targetDayId in current week
     const now = new Date();
     const curDay = now.getDay() === 0 ? 7 : now.getDay();
-    const diffDays = targetDayId - curDay;
+    const diffDays = (targetDayId - curDay) + (weekOffset * 7);
     const newDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffDays);
     
     // Keep existing hours
@@ -93,16 +132,69 @@ export default function CalendarView({
     try {
       if (onUpdateSubtaskTime) {
         await onUpdateSubtaskTime(stId, newDate.toISOString());
+        const dayObj = getDayInfo(targetDayId);
         showToast({
           type: 'success',
           title: '🔄 Đã dời lịch thành công',
-          message: `Nhiệm vụ "${targetSubtask.title}" đã được dời sang ${DAYS_OF_WEEK.find(d => d.id === targetDayId)?.name}!`
+          message: `Nhiệm vụ "${targetSubtask.title}" đã được dời sang ${dayObj.fullDisplay}!`
         });
       }
     } catch (err) {
       console.error(err);
     }
     setDraggingId(null);
+  };
+
+  const handleOpenDeleteConfirm = (e, item, type) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    setDeleteModal({
+      isOpen: true,
+      item,
+      type,
+      isDeleting: false
+    });
+  };
+
+  const handleExecuteDelete = async () => {
+    if (!deleteModal.item) return;
+    const { item, type } = deleteModal;
+    setDeleteModal(prev => ({ ...prev, isDeleting: true }));
+
+    try {
+      if (type === 'fixed') {
+        if (onDeleteFixedSchedule) {
+          await onDeleteFixedSchedule(item.id);
+        } else {
+          await api.deleteFixedSchedule(item.id);
+          if (onUndoSuccess) onUndoSuccess();
+        }
+        showToast({
+          type: 'success',
+          title: '🗑️ Đã xóa Lịch cố định',
+          message: `Môn học/lịch "${item.title}" đã được xóa thành công!`
+        });
+      } else {
+        if (onDeleteSubtask) {
+          await onDeleteSubtask(item.id);
+        } else {
+          await api.deleteSubtask(item.id);
+          if (onUndoSuccess) onUndoSuccess();
+        }
+        showToast({
+          type: 'success',
+          title: '🗑️ Đã xóa nhiệm vụ',
+          message: `Nhiệm vụ "${item.title}" đã được xóa khỏi lịch thành công!`
+        });
+      }
+      setDeleteModal({ isOpen: false, item: null, type: 'subtask', isDeleting: false });
+    } catch (e) {
+      showToast({
+        type: 'error',
+        title: 'Xóa thất bại',
+        message: e.response?.data?.error || 'Không thể xóa mục này.'
+      });
+      setDeleteModal(prev => ({ ...prev, isDeleting: false }));
+    }
   };
 
   const handleUndo = async () => {
@@ -134,17 +226,33 @@ export default function CalendarView({
       <div className="p-2.5 sm:p-3 border-b border-slate-200/80 dark:border-[#1d2c26] bg-white dark:bg-[#0e1512] flex items-center justify-between gap-2 shadow-2xs shrink-0">
         <div className="flex items-center space-x-2">
           <div className="flex items-center space-x-1">
-            <button className="p-1 rounded-lg bg-slate-100 dark:bg-[#182720] hover:bg-slate-200 dark:hover:bg-[#20352c] text-slate-700 dark:text-slate-200 transition">
+            <button 
+              onClick={() => setWeekOffset(prev => prev - 1)}
+              className="p-1.5 rounded-lg bg-slate-100 dark:bg-[#182720] hover:bg-slate-200 dark:hover:bg-[#20352c] text-slate-700 dark:text-slate-200 transition cursor-pointer"
+              title="Xem tuần trước"
+            >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
-            <button className="p-1 rounded-lg bg-slate-100 dark:bg-[#182720] hover:bg-slate-200 dark:hover:bg-[#20352c] text-slate-700 dark:text-slate-200 transition">
+            <button 
+              onClick={() => setWeekOffset(prev => prev + 1)}
+              className="p-1.5 rounded-lg bg-slate-100 dark:bg-[#182720] hover:bg-slate-200 dark:hover:bg-[#20352c] text-slate-700 dark:text-slate-200 transition cursor-pointer"
+              title="Xem tuần sau"
+            >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
+            {weekOffset !== 0 && (
+              <button
+                onClick={() => setWeekOffset(0)}
+                className="px-2 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-black cursor-pointer shadow-2xs hover:bg-emerald-200 transition"
+              >
+                Về tuần này
+              </button>
+            )}
           </div>
 
           <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center space-x-1.5">
             <CalIcon className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>Kế hoạch 7 Ngày trong tuần</span>
+            <span>Kế hoạch Tuần: {currentWeekDays[0]?.dateStr} - {currentWeekDays[6]?.dateStr}</span>
           </h2>
         </div>
 
@@ -152,7 +260,7 @@ export default function CalendarView({
         <div className="flex bg-slate-100 dark:bg-[#15221b] p-0.5 rounded-xl border border-slate-200 dark:border-[#21352b] text-[11px] font-bold">
           <button
             onClick={() => setViewMode('day')}
-            className={`px-2.5 py-1 rounded-lg transition ${
+            className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
               viewMode === 'day'
                 ? 'bg-white dark:bg-[#1d3126] text-emerald-800 dark:text-emerald-300 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
@@ -162,7 +270,7 @@ export default function CalendarView({
           </button>
           <button
             onClick={() => setViewMode('week')}
-            className={`px-2.5 py-1 rounded-lg transition ${
+            className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
               viewMode === 'week'
                 ? 'bg-white dark:bg-[#1d3126] text-emerald-800 dark:text-emerald-300 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
@@ -172,7 +280,7 @@ export default function CalendarView({
           </button>
           <button
             onClick={() => setViewMode('month')}
-            className={`px-2.5 py-1 rounded-lg transition ${
+            className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
               viewMode === 'month'
                 ? 'bg-white dark:bg-[#1d3126] text-emerald-800 dark:text-emerald-300 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
@@ -223,7 +331,7 @@ export default function CalendarView({
           {onToggleChat && (
             <button
               onClick={onToggleChat}
-              className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#16241e] hover:bg-emerald-50 dark:hover:bg-[#1e332a] text-slate-700 dark:text-emerald-300 border border-slate-200 dark:border-[#22362d] text-xs font-bold transition"
+              className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#16241e] hover:bg-emerald-50 dark:hover:bg-[#1e332a] text-slate-700 dark:text-emerald-300 border border-slate-200 dark:border-[#22362d] text-xs font-bold transition cursor-pointer"
             >
               {isChatOpen ? <PanelRightClose className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <PanelRightOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
               <span className="hidden sm:inline">{isChatOpen ? 'Ẩn Chat' : 'Mở Chat'}</span>
@@ -237,26 +345,27 @@ export default function CalendarView({
         {/* DAY VIEW */}
         {viewMode === 'day' && (
           <div className="flex-1 flex flex-col bg-white dark:bg-[#101915] rounded-2xl border border-slate-200 dark:border-[#1d2c26] p-4 overflow-y-auto">
-            {/* Day Selector Pills */}
+            {/* Day Selector Pills with dynamic Day + Date */}
             <div className="flex space-x-2 pb-3 border-b border-slate-100 dark:border-[#1c2a24] mb-4 overflow-x-auto">
-              {DAYS_OF_WEEK.map(d => (
+              {currentWeekDays.map(d => (
                 <button
                   key={d.id}
                   onClick={() => setSelectedDayId(d.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
                     selectedDayId === d.id
-                      ? 'bg-[#1b4d3e] text-white dark:bg-emerald-600 shadow-xs'
+                      ? 'bg-[#1b4d3e] text-white dark:bg-emerald-600 shadow-xs font-black'
                       : 'bg-slate-100 dark:bg-[#16241e] text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                   }`}
                 >
-                  {d.name}
+                  <span>{d.name}</span>
+                  <span className="ml-1 text-[10px] opacity-80">({d.dateStr})</span>
                 </button>
               ))}
             </div>
 
             <div className="space-y-3">
               <h3 className="font-extrabold text-sm text-[#1b3d2f] dark:text-white flex items-center gap-2">
-                <span>Chi tiết lịch trình: {DAYS_OF_WEEK.find(d => d.id === selectedDayId)?.name}</span>
+                <span>Chi tiết lịch trình: {currentWeekDays.find(d => d.id === selectedDayId)?.fullDisplay}</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
                   {getFixedForDay(selectedDayId).length + getSubtasksForDay(selectedDayId).length} sự kiện
                 </span>
@@ -291,17 +400,26 @@ export default function CalendarView({
                     <p className="text-xs text-slate-400">Không có nhiệm vụ nào được xếp vào ngày này.</p>
                   ) : (
                     getSubtasksForDay(selectedDayId).map(st => (
-                      <div key={st.id} className="p-2 bg-white dark:bg-[#101915] rounded-lg border border-emerald-100 dark:border-[#1e352b] text-xs flex items-center justify-between">
+                      <div key={st.id} className="p-2.5 bg-white dark:bg-[#101915] rounded-xl border border-emerald-100 dark:border-[#1e352b] text-xs flex items-center justify-between shadow-2xs">
                         <div>
                           <div className="font-bold text-slate-900 dark:text-slate-100">{st.title}</div>
                           <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">{formatTime24(st.startTime)} - {formatTime24(st.endTime)} ({st.durationMin} phút)</div>
                         </div>
-                        <button
-                          onClick={() => onOpenPomodoro(st)}
-                          className="px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold shrink-0"
-                        >
-                          Pomodoro
-                        </button>
+                        <div className="flex items-center space-x-1.5 shrink-0">
+                          <button
+                            onClick={() => onOpenPomodoro(st)}
+                            className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold cursor-pointer"
+                          >
+                            Pomodoro
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSubtaskDirect(st.id, st.title)}
+                            className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                            title="Xóa nhiệm vụ này khỏi lịch"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}
@@ -321,7 +439,6 @@ export default function CalendarView({
             <div className="grid grid-cols-7 gap-2 flex-1">
               {Array.from({ length: 28 }).map((_, idx) => {
                 const dayNum = idx + 1;
-                const dayMod = (idx % 7) + 1;
                 const count = (idx % 3 === 0) ? 2 : (idx % 2 === 0) ? 1 : 0;
                 return (
                   <div key={idx} className="p-2 rounded-xl bg-slate-50 dark:bg-[#14201b] border border-slate-200 dark:border-[#1e3027] min-h-[60px] flex flex-col justify-between">
@@ -341,10 +458,9 @@ export default function CalendarView({
         {/* WEEK VIEW (DEFAULT) */}
         {viewMode === 'week' && (
           <div className="grid grid-cols-7 gap-1.5 sm:gap-2 h-full w-full">
-            {DAYS_OF_WEEK.map((day) => {
+            {currentWeekDays.map((day) => {
               const dayFixed = getFixedForDay(day.id);
               const daySubtasks = getSubtasksForDay(day.id);
-              const isToday = day.id === 2; // Tuesday
               const isDragOver = dragOverDay === day.id;
 
               return (
@@ -359,18 +475,19 @@ export default function CalendarView({
                   className={`rounded-xl border flex flex-col h-full min-w-0 transition bg-white dark:bg-[#101915] shadow-2xs ${
                     isDragOver
                       ? 'border-emerald-500 ring-2 ring-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/40'
-                      : isToday
+                      : day.isToday
                       ? 'border-emerald-500 dark:border-emerald-500 ring-1 ring-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-950/20'
                       : 'border-slate-200/90 dark:border-[#1d2c26] hover:border-slate-300 dark:hover:border-[#2b443a]'
                   }`}
                 >
-                  {/* Day Header */}
+                  {/* Day Header with dynamic Day + Date */}
                   <div className={`px-2 py-1.5 border-b rounded-t-xl flex items-center justify-between shrink-0 ${
-                    isToday ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200' : 'border-slate-100 dark:border-[#192721] bg-slate-50/80 dark:bg-[#14201b] text-slate-800 dark:text-slate-200'
+                    day.isToday ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200' : 'border-slate-100 dark:border-[#192721] bg-slate-50/80 dark:bg-[#14201b] text-slate-800 dark:text-slate-200'
                   }`}>
                     <div className="flex items-center space-x-1 min-w-0">
                       <span className="font-extrabold text-[11px] sm:text-xs truncate">{day.name}</span>
-                      {isToday && (
+                      <span className="text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-400">({day.dateStr})</span>
+                      {day.isToday && (
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" title="Hôm nay"></span>
                       )}
                     </div>
@@ -385,14 +502,23 @@ export default function CalendarView({
                     {dayFixed.map((fs) => (
                       <div
                         key={fs.id}
-                        className="p-1.5 rounded-lg bg-blue-50 dark:bg-[#122436] border border-blue-200/80 dark:border-[#1e3c5a] text-blue-950 dark:text-blue-200 text-[11px] shadow-2xs"
+                        className="group relative p-1.5 rounded-lg bg-blue-50 dark:bg-[#122436] border border-blue-200/80 dark:border-[#1e3c5a] text-blue-950 dark:text-blue-200 text-[11px] shadow-2xs transition hover:border-blue-400 dark:hover:border-blue-500"
                       >
                         <div className="flex items-center justify-between text-[9px] text-blue-700 dark:text-blue-300 font-mono font-bold mb-0.5">
                           <span className="flex items-center space-x-0.5 truncate">
                             <BookOpen className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400 shrink-0" />
                             <span>TKB</span>
                           </span>
-                          <span className="shrink-0">{fs.startTime}-{fs.endTime}</span>
+                          <div className="flex items-center space-x-1">
+                            <span className="shrink-0">{fs.startTime}-{fs.endTime}</span>
+                            <button
+                              onClick={(e) => handleOpenDeleteConfirm(e, fs, 'fixed')}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-rose-500 hover:text-white hover:bg-rose-500 dark:hover:bg-rose-600 transition cursor-pointer shrink-0"
+                              title="Xóa môn học này khỏi TKB"
+                            >
+                              <X className="w-2.5 h-2.5 stroke-[2.5]" />
+                            </button>
+                          </div>
                         </div>
                         <div className="font-bold text-[11px] leading-tight line-clamp-2 text-slate-900 dark:text-slate-100">
                           {fs.title}
@@ -400,7 +526,7 @@ export default function CalendarView({
                       </div>
                     ))}
 
-                    {/* AI Subtask Cards - Draggable */}
+                    {/* AI Subtask Cards - Draggable & Deletable */}
                     {daySubtasks.map((st) => {
                       const isDone = st.status === 'DONE';
                       const startStr = formatTime24(st.startTime);
@@ -411,7 +537,7 @@ export default function CalendarView({
                           key={st.id}
                           draggable={true}
                           onDragStart={(e) => handleDragStart(e, st.id)}
-                          className={`p-2 rounded-xl border text-[11px] transition cursor-grab active:cursor-grabbing ${
+                          className={`p-2 rounded-xl border text-[11px] transition cursor-grab active:cursor-grabbing group ${
                             isDone
                               ? 'bg-[#f4f8f5] dark:bg-[#131e19] border-[#cbe4d2] dark:border-[#1d2d26] opacity-85'
                               : 'bg-emerald-50/70 dark:bg-[#14261e] border-emerald-200/90 dark:border-[#1d3d2e] text-slate-800 dark:text-slate-200 hover:border-emerald-400 dark:hover:border-emerald-600 hover:shadow-xs'
@@ -425,7 +551,16 @@ export default function CalendarView({
                               <GripVertical className="w-2.5 h-2.5 opacity-60" />
                               <span>{isDone ? '✓ XONG' : `${st.durationMin}p`}</span>
                             </span>
-                            <span className="text-slate-500 dark:text-slate-400 font-bold truncate">{startStr}-{endStr}</span>
+                            <div className="flex items-center space-x-1">
+                              <span className="text-slate-500 dark:text-slate-400 font-bold truncate">{startStr}-{endStr}</span>
+                              <button
+                                onClick={(e) => handleOpenDeleteConfirm(e, st, 'subtask')}
+                                className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-rose-500 hover:text-white hover:bg-rose-500 dark:hover:bg-rose-600 transition cursor-pointer shrink-0"
+                                title="Xóa nhiệm vụ này"
+                              >
+                                <X className="w-2.5 h-2.5 stroke-[2.5]" />
+                              </button>
+                            </div>
                           </div>
 
                           {/* Title */}
@@ -446,7 +581,7 @@ export default function CalendarView({
                           <div className="flex items-center justify-between pt-1 border-t border-emerald-100/80 dark:border-[#1d3126] gap-1">
                             <button
                               onClick={() => onToggleSubtaskStatus(st.id, isDone ? 'TODO' : 'DONE')}
-                              className={`flex items-center space-x-1 text-[10px] font-bold transition truncate px-1.5 py-0.5 rounded ${
+                              className={`flex items-center space-x-1 text-[10px] font-bold transition truncate px-1.5 py-0.5 rounded cursor-pointer ${
                                 isDone ? 'bg-emerald-50 dark:bg-[#1a2d24] text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100' : 'text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-[#192b22]'
                               }`}
                               title={isDone ? 'Bấm để đánh dấu chưa xong' : 'Bấm để đánh dấu hoàn thành'}
@@ -455,16 +590,27 @@ export default function CalendarView({
                               <span className="truncate">{isDone ? 'Xong' : 'Đánh dấu'}</span>
                             </button>
 
-                            {!isDone && (
+                            <div className="flex items-center space-x-1 shrink-0">
+                              {!isDone && (
+                                <button
+                                  onClick={() => onOpenPomodoro(st)}
+                                  className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black flex items-center space-x-0.5 shadow-2xs cursor-pointer"
+                                  title="Bắt đầu Pomodoro đếm giờ"
+                                >
+                                  <Play className="w-2 h-2 fill-white shrink-0" />
+                                  <span>Pomo</span>
+                                </button>
+                              )}
+
+                              {/* Direct Delete Subtask button on calendar */}
                               <button
-                                onClick={() => onOpenPomodoro(st)}
-                                className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black flex items-center space-x-0.5 shadow-2xs shrink-0 cursor-pointer"
-                                title="Bắt đầu Pomodoro đếm giờ"
+                                onClick={(e) => handleOpenDeleteConfirm(e, st, 'subtask')}
+                                className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                                title="Xóa nhiệm vụ này trực tiếp khỏi lịch"
                               >
-                                <Play className="w-2 h-2 fill-white shrink-0" />
-                                <span>Pomo</span>
+                                <Trash2 className="w-3 h-3" />
                               </button>
-                            )}
+                            </div>
                           </div>
                         </div>
                       );
@@ -482,6 +628,69 @@ export default function CalendarView({
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-white dark:bg-[#121c18] border border-slate-200 dark:border-[#22382e] rounded-2xl shadow-2xl p-5 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950/80 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                  Xác nhận xóa khỏi lịch?
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {deleteModal.type === 'fixed' ? 'Lịch cố định (TKB)' : 'Nhiệm vụ AI xếp'}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-[#182620] rounded-xl border border-slate-100 dark:border-[#22382e] mb-4">
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-100 line-clamp-2">
+                "{deleteModal.item?.title}"
+              </p>
+              {deleteModal.item?.startTime && (
+                <p className="text-[10px] font-mono font-semibold text-slate-500 dark:text-slate-400 mt-1">
+                  ⏰ Khung giờ: {typeof deleteModal.item?.startTime === 'string' && deleteModal.item.startTime.includes('T') ? formatTime24(deleteModal.item.startTime) : deleteModal.item?.startTime} {deleteModal.item?.endTime ? `- ${typeof deleteModal.item?.endTime === 'string' && deleteModal.item.endTime.includes('T') ? formatTime24(deleteModal.item.endTime) : deleteModal.item?.endTime}` : ''}
+                </p>
+              )}
+            </div>
+
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
+              Bạn có chắc chắn muốn xóa mục này không? Khung giờ tương ứng sẽ được giải phóng trên lịch trình.
+            </p>
+
+            <div className="flex items-center justify-end space-x-2">
+              <button
+                onClick={() => setDeleteModal({ isOpen: false, item: null, type: 'subtask', isDeleting: false })}
+                disabled={deleteModal.isDeleting}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1a2c24] transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={handleExecuteDelete}
+                disabled={deleteModal.isDeleting}
+                className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
+              >
+                {deleteModal.isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Đang xóa...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xóa ngay</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

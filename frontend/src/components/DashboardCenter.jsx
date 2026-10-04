@@ -16,23 +16,42 @@ import {
   Send,
   Loader2,
   Sun,
-  Moon
+  Moon,
+  Crown,
+  Zap,
+  Trash2,
+  X
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { api } from '../api/client';
 import ThemeSwitch from './ThemeSwitch';
 
-const WEEK_DAYS = [
-  { key: 1, label: 'Mon', dayNum: 'T2' },
-  { key: 2, label: 'Tue', dayNum: 'T3', isToday: true },
-  { key: 3, label: 'Wed', dayNum: 'T4' },
-  { key: 4, label: 'Thu', dayNum: 'T5' },
-  { key: 5, label: 'Fri', dayNum: 'T6' },
-  { key: 6, label: 'Sat', dayNum: 'T7' },
-  { key: 7, label: 'Sun', dayNum: 'CN' }
+const STANDARD_TIME_SLOTS = [
+  { startH: 6, endH: 7, label: '6:00 - 7:00' },
+  { startH: 7, endH: 8, label: '7:00 - 8:00' },
+  { startH: 8, endH: 9, label: '8:00 - 9:00' },
+  { startH: 9, endH: 10, label: '9:00 - 10:00' },
+  { startH: 10, endH: 11, label: '10:00 - 11:00' },
+  { startH: 11, endH: 12, label: '11:00 - 12:00' },
+  { startH: 12, endH: 13, label: '12:00 - 13:00' },
+  { startH: 13, endH: 14, label: '13:00 - 14:00' },
+  { startH: 14, endH: 15, label: '14:00 - 15:00' },
+  { startH: 15, endH: 16, label: '15:00 - 16:00' },
+  { startH: 16, endH: 17, label: '16:00 - 17:00' },
+  { startH: 17, endH: 18, label: '17:00 - 18:00' },
+  { startH: 18, endH: 19, label: '18:00 - 19:00' },
+  { startH: 19, endH: 20, label: '19:00 - 20:00' },
+  { startH: 20, endH: 21, label: '20:00 - 21:00' },
+  { startH: 21, endH: 22, label: '21:00 - 22:00' },
+  { startH: 22, endH: 23, label: '22:00 - 23:00' },
+  { startH: 23, endH: 24, label: '23:00 - 24:00' },
 ];
 
-const TIME_ROWS = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
+const ALL_TIME_SLOTS = Array.from({ length: 24 }, (_, i) => ({
+  startH: i,
+  endH: i + 1,
+  label: `${i}:00 - ${i + 1 === 24 ? '24:00' : `${i + 1}:00`}`
+}));
 
 export default function DashboardCenter({ 
   user,
@@ -43,11 +62,87 @@ export default function DashboardCenter({
   onOpenPomodoro, 
   onAskAI, 
   onOpenAuth, 
-  onLogout 
+  onLogout,
+  onOpenUpgrade,
+  onDeleteSubtask,
+  onDeleteFixedSchedule
 }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, item: null, type: 'subtask', isDeleting: false });
   const { showToast } = useToast();
+
+  const handleOpenDeleteConfirm = (e, item, type) => {
+    e.stopPropagation();
+    setDeleteModal({
+      isOpen: true,
+      item,
+      type,
+      isDeleting: false
+    });
+  };
+
+  const handleExecuteDelete = async () => {
+    if (!deleteModal.item) return;
+    const { item, type } = deleteModal;
+    setDeleteModal(prev => ({ ...prev, isDeleting: true }));
+
+    try {
+      if (type === 'fixed') {
+        if (onDeleteFixedSchedule) {
+          await onDeleteFixedSchedule(item.id);
+        } else {
+          await api.deleteFixedSchedule(item.id);
+        }
+        showToast({
+          type: 'success',
+          title: '🗑️ Đã xóa Lịch cố định',
+          message: `Môn học/lịch "${item.title}" đã được xóa khỏi thời khóa biểu!`
+        });
+      } else {
+        if (onDeleteSubtask) {
+          await onDeleteSubtask(item.id);
+        } else {
+          await api.deleteSubtask(item.id);
+        }
+        showToast({
+          type: 'success',
+          title: '🗑️ Đã xóa nhiệm vụ',
+          message: `Nhiệm vụ "${item.title}" đã được xóa thành công!`
+        });
+      }
+      setDeleteModal({ isOpen: false, item: null, type: 'subtask', isDeleting: false });
+    } catch (err) {
+      showToast({
+        type: 'error',
+        title: 'Xóa thất bại',
+        message: err.response?.data?.error || err.message || 'Không thể xóa mục này.'
+      });
+      setDeleteModal(prev => ({ ...prev, isDeleting: false }));
+    }
+  };
+
+  // Dynamically calculate current week days with both Day of Week & Date (e.g. Thứ 2, 05/10)
+  const dynamicWeekDays = useMemo(() => {
+    const now = new Date();
+    const curDay = now.getDay() === 0 ? 7 : now.getDay();
+    const dayNames = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    const labelNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    return Array.from({ length: 7 }, (_, i) => {
+      const dayId = i + 1;
+      const diff = dayId - curDay;
+      const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
+      const dateFormatted = `${targetDate.getDate().toString().padStart(2, '0')}/${(targetDate.getMonth() + 1).toString().padStart(2, '0')}`;
+      return {
+        key: dayId,
+        label: labelNames[i],
+        dayNum: dayNames[i],
+        dateFormatted,
+        isToday: dayId === curDay
+      };
+    });
+  }, []);
 
   const handleSendUrgentEmail = async () => {
     if (!user) {
@@ -57,6 +152,17 @@ export default function DashboardCenter({
         message: 'Vui lòng đăng nhập để gửi email báo việc gấp về hộp thư của bạn!'
       });
       onOpenAuth();
+      return;
+    }
+
+    const isPro = user?.plan === 'PRO' || user?.role === 'ADMIN';
+    if (!isPro) {
+      showToast({
+        type: 'warning',
+        title: 'Tính năng PRO ⭐',
+        message: 'Tự động gửi cảnh báo việc gấp qua Email là tính năng độc quyền của gói PRO. Vui lòng nâng cấp để sử dụng!'
+      });
+      if (onOpenUpgrade) onOpenUpgrade();
       return;
     }
 
@@ -92,21 +198,26 @@ export default function DashboardCenter({
     }
   };
 
-  const getFixedForDayAndTime = (dayId, timeHour) => {
+  const [timeRangeMode, setTimeRangeMode] = useState('standard'); // 'standard' (6:00-24:00) | 'all' (0:00-24:00)
+
+  const activeTimeSlots = timeRangeMode === 'standard' ? STANDARD_TIME_SLOTS : ALL_TIME_SLOTS;
+
+  const getFixedForDayAndTime = (dayId, startH, endH) => {
     return fixedSchedules.filter(fs => {
       if (fs.dayOfWeek !== dayId) return false;
-      const startH = parseInt(fs.startTime.split(':')[0], 10);
-      return Math.abs(startH - timeHour) < 2;
+      const fsStartH = parseInt(fs.startTime.split(':')[0], 10);
+      const fsEndH = parseInt(fs.endTime.split(':')[0], 10) || (fsStartH + 1);
+      return (fsStartH < endH && fsEndH > startH) || fsStartH === startH;
     });
   };
 
-  const getSubtasksForDayAndTime = (dayId, timeHour) => {
+  const getSubtasksForDayAndTime = (dayId, startH, endH) => {
     return subtasks.filter(st => {
       const d = new Date(st.startTime);
       const day = d.getDay() === 0 ? 7 : d.getDay();
       if (day !== dayId) return false;
-      const startH = d.getHours();
-      return Math.abs(startH - timeHour) < 2;
+      const stH = d.getHours();
+      return stH >= startH && stH < endH;
     });
   };
 
@@ -170,12 +281,12 @@ export default function DashboardCenter({
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-3">
-          {/* Send Urgent Email Shortcut Button */}
+          {/* Send Urgent Email Shortcut Button (PRO) */}
           <button
             onClick={handleSendUrgentEmail}
             disabled={isSendingEmail}
             className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#fff2ee] dark:bg-rose-950/40 hover:bg-[#ffe5dc] dark:hover:bg-rose-900/50 border border-[#fecdc2] dark:border-rose-900 text-[#c23622] dark:text-rose-300 text-xs font-black shadow-2xs transition cursor-pointer disabled:opacity-50"
-            title="Gửi ngay danh sách các việc gấp về hộp thư email"
+            title="Gửi ngay danh sách các việc gấp về hộp thư email (Dành riêng cho gói PRO ⭐)"
           >
             {isSendingEmail ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-[#c23622] dark:text-rose-300" />
@@ -183,6 +294,9 @@ export default function DashboardCenter({
               <Mail className="w-3.5 h-3.5 text-[#c23622] dark:text-rose-300" />
             )}
             <span>{isSendingEmail ? 'Đang gửi mail...' : 'Báo việc gấp về Mail'}</span>
+            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-rose-200 dark:bg-rose-900/80 text-rose-900 dark:text-rose-200 uppercase">
+              PRO
+            </span>
           </button>
 
           <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#121c18] border border-[#e2eee5] dark:border-[#22362d] text-[#345946] dark:text-emerald-300 text-xs font-bold shadow-2xs">
@@ -195,13 +309,46 @@ export default function DashboardCenter({
             <span>{stats?.streakDays || user?.streakDays || 0} ngày streak</span>
           </div>
 
-          {/* User Profile & Direct Logout Button */}
+          {/* User Profile, Plan Badge & Direct Logout Button */}
           {user ? (
             <div className="flex items-center space-x-2">
               <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-white dark:bg-[#121c18] border border-[#e1ece4] dark:border-[#22362d] text-[#1b4d3e] dark:text-emerald-300 text-xs font-bold shadow-2xs">
                 <span className="text-sm">{user.avatar || '👩‍🎓'}</span>
                 <span>{user.name}</span>
+
+                {/* Account Plan Badge (FREE vs PRO) */}
+                {user.plan === 'PRO' || user.role === 'ADMIN' ? (
+                  <button
+                    onClick={onOpenUpgrade}
+                    className="ml-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 flex items-center gap-1 shadow-xs cursor-pointer hover:brightness-105"
+                    title="Gói PRO Cao Cấp - Bấm để xem chi tiết"
+                  >
+                    <Crown className="w-3 h-3 fill-amber-950" />
+                    <span>PRO</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={onOpenUpgrade}
+                    className="ml-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700"
+                    title="Gói Miễn Phí (FREE) - Bấm để nâng cấp PRO"
+                  >
+                    FREE
+                  </button>
+                )}
               </div>
+
+              {/* Upgrade to PRO button for FREE accounts */}
+              {user.plan !== 'PRO' && user.role !== 'ADMIN' && (
+                <button
+                  onClick={onOpenUpgrade}
+                  className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-black shadow-xs transition cursor-pointer flex items-center space-x-1"
+                  title="Nâng cấp lên gói PRO để mở khóa toàn bộ AI"
+                >
+                  <Zap className="w-3.5 h-3.5 fill-white" />
+                  <span className="hidden sm:inline">Nâng cấp PRO</span>
+                </button>
+              )}
+
               <button
                 onClick={onLogout}
                 className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs transition cursor-pointer flex items-center space-x-1"
@@ -439,25 +586,46 @@ export default function DashboardCenter({
             </div>
 
             <div className="flex items-center space-x-1.5 text-xs text-[#527362] dark:text-[#8aa396] font-bold">
-              <span className="px-2 py-0.5 rounded-md bg-[#f1f7f3] dark:bg-[#17251f] border border-[#e2ede5] dark:border-[#23382e] text-[11px] text-[#1b4d3e] dark:text-emerald-300">
-                Tuần này
-              </span>
+              <div className="flex items-center bg-[#eef6f0] dark:bg-[#162720] p-0.5 rounded-lg border border-[#d6e9dc] dark:border-[#22392e] text-[10px]">
+                <button
+                  onClick={() => setTimeRangeMode('standard')}
+                  className={`px-2 py-0.5 rounded-md font-bold transition cursor-pointer ${
+                    timeRangeMode === 'standard'
+                      ? 'bg-white dark:bg-[#1f372c] text-emerald-800 dark:text-emerald-300 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                  }`}
+                  title="Hiển thị từ 6:00 đến 24:00"
+                >
+                  6:00 - 24:00
+                </button>
+                <button
+                  onClick={() => setTimeRangeMode('all')}
+                  className={`px-2 py-0.5 rounded-md font-bold transition cursor-pointer ${
+                    timeRangeMode === 'all'
+                      ? 'bg-white dark:bg-[#1f372c] text-emerald-800 dark:text-emerald-300 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                  }`}
+                  title="Hiển thị đầy đủ 24 khung giờ"
+                >
+                  24 Khung Giờ
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Timetable Matrix */}
-          <div className="flex-1 overflow-x-auto overflow-y-auto">
-            <table className="w-full border-collapse min-w-[560px]">
-              <thead>
+          {/* Timetable Matrix - Range Slots with Smooth Scroll */}
+          <div className="flex-1 overflow-x-auto max-h-[500px] overflow-y-auto pr-1">
+            <table className="w-full border-collapse min-w-[580px]">
+              <thead className="sticky top-0 bg-white dark:bg-[#121c18] z-10">
                 <tr className="border-b border-[#e9f2eb] dark:border-[#1d2c26]">
-                  <th className="p-1.5 w-12 text-[10px] font-bold text-[#839e90] text-left"></th>
-                  {WEEK_DAYS.map((day) => (
-                    <th key={day.key} className="p-1.5 text-center">
-                      <div className={`py-1 px-1.5 rounded-xl flex flex-col items-center ${
+                  <th className="p-1.5 w-24 text-[10px] font-extrabold text-[#839e90] text-left">Khung giờ</th>
+                  {dynamicWeekDays.map((day) => (
+                    <th key={day.key} className="p-1 text-center">
+                      <div className={`py-1 px-1 rounded-xl flex flex-col items-center ${
                         day.isToday ? 'bg-[#dcf4e2] dark:bg-[#1b3e2d] text-[#134932] dark:text-emerald-300 font-black' : 'text-[#486b59] dark:text-[#7f9e8f] font-bold'
                       }`}>
-                        <span className="text-[10px] uppercase">{day.label}</span>
-                        <span className="text-[11px]">{day.dayNum}</span>
+                        <span className="text-[10px] uppercase font-bold">{day.label} ({day.dayNum})</span>
+                        <span className="text-[11px] font-mono font-black text-emerald-700 dark:text-emerald-400">{day.dateFormatted}</span>
                       </div>
                     </th>
                   ))}
@@ -465,17 +633,16 @@ export default function DashboardCenter({
               </thead>
 
               <tbody>
-                {TIME_ROWS.map((timeStr) => {
-                  const hour = parseInt(timeStr.split(':')[0], 10);
+                {activeTimeSlots.map((slot) => {
                   return (
-                    <tr key={timeStr} className="border-b border-[#f0f6f2] dark:border-[#17241e] min-h-[46px]">
-                      <td className="py-2 pr-2 text-[10px] font-mono font-bold text-[#8aa396] dark:text-[#5e7c6e] align-top">
-                        {timeStr}
+                    <tr key={slot.label} className="border-b border-[#f0f6f2] dark:border-[#17241e] min-h-[46px]">
+                      <td className="py-2.5 pr-2 text-[10px] font-mono font-extrabold text-[#719181] dark:text-[#6a8d7d] align-top whitespace-nowrap">
+                        {slot.label}
                       </td>
 
-                      {WEEK_DAYS.map((day) => {
-                        const fixedList = getFixedForDayAndTime(day.key, hour);
-                        const subList = getSubtasksForDayAndTime(day.key, hour);
+                      {dynamicWeekDays.map((day) => {
+                        const fixedList = getFixedForDayAndTime(day.key, slot.startH, slot.endH);
+                        const subList = getSubtasksForDayAndTime(day.key, slot.startH, slot.endH);
 
                         return (
                           <td key={day.key} className="p-1 align-top w-[14%]">
@@ -483,9 +650,18 @@ export default function DashboardCenter({
                             {fixedList.map((fs) => (
                               <div
                                 key={fs.id}
-                                className="p-1.5 rounded-xl bg-[#e2effa] dark:bg-[#152a3d] text-[#1e5687] dark:text-[#7cc0f7] border border-[#cbe3f5] dark:border-[#1e3e5b] text-[10px] leading-tight mb-1 shadow-2xs font-bold"
+                                className="group relative p-1.5 rounded-xl bg-[#e2effa] dark:bg-[#152a3d] text-[#1e5687] dark:text-[#7cc0f7] border border-[#cbe3f5] dark:border-[#1e3e5b] text-[10px] leading-tight mb-1 shadow-2xs font-bold transition hover:border-[#a8d3f5] dark:hover:border-[#2b5982]"
                               >
-                                <div className="truncate">{fs.title}</div>
+                                <div className="flex items-start justify-between space-x-1">
+                                  <div className="truncate flex-1 min-w-0">{fs.title}</div>
+                                  <button
+                                    onClick={(e) => handleOpenDeleteConfirm(e, fs, 'fixed')}
+                                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-rose-500 hover:text-white hover:bg-rose-500 dark:hover:bg-rose-600 transition cursor-pointer shrink-0 -mt-0.5 -mr-0.5"
+                                    title="Xóa môn học này khỏi TKB"
+                                  >
+                                    <X className="w-2.5 h-2.5 stroke-[2.5]" />
+                                  </button>
+                                </div>
                                 <div className="text-[8.5px] opacity-80 mt-0.5">{fs.startTime} - {fs.endTime}</div>
                               </div>
                             ))}
@@ -497,19 +673,28 @@ export default function DashboardCenter({
                                 <div
                                   key={st.id}
                                   onClick={() => onOpenPomodoro(st)}
-                                  className={`p-1.5 rounded-xl border text-[10px] leading-tight mb-1 shadow-2xs font-bold cursor-pointer transition ${
+                                  className={`group relative p-1.5 rounded-xl border text-[10px] leading-tight mb-1 shadow-2xs font-bold cursor-pointer transition ${
                                     isDone
                                       ? 'bg-[#f0f6f2] dark:bg-[#16231c] text-[#557a64] dark:text-[#7f9e8f] border-[#c5decb] dark:border-[#22362c] opacity-80'
                                       : 'bg-[#ebf8ee] dark:bg-[#13291e] text-[#29683e] dark:text-emerald-300 border-[#cbeecd] dark:border-[#1e412f] hover:bg-[#d8edd9] dark:hover:bg-[#1a3829]'
                                   }`}
                                 >
-                                  <div className="flex items-center space-x-1 truncate">
-                                    {isDone ? (
-                                      <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                    ) : (
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                                    )}
-                                    <span className={`truncate ${isDone ? 'line-through text-slate-500' : ''}`}>{st.title}</span>
+                                  <div className="flex items-start justify-between space-x-1">
+                                    <div className="flex items-center space-x-1 truncate min-w-0 flex-1">
+                                      {isDone ? (
+                                        <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                      ) : (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                                      )}
+                                      <span className={`truncate ${isDone ? 'line-through text-slate-500' : ''}`}>{st.title}</span>
+                                    </div>
+                                    <button
+                                      onClick={(e) => handleOpenDeleteConfirm(e, st, 'subtask')}
+                                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-rose-500 hover:text-white hover:bg-rose-500 dark:hover:bg-rose-600 transition cursor-pointer shrink-0 -mt-0.5 -mr-0.5"
+                                      title="Xóa nhiệm vụ này khỏi lịch"
+                                    >
+                                      <X className="w-2.5 h-2.5 stroke-[2.5]" />
+                                    </button>
                                   </div>
                                   <div className="text-[8.5px] opacity-80 mt-0.5 flex items-center justify-between">
                                     <span>{st.durationMin}p</span>
@@ -545,6 +730,69 @@ export default function DashboardCenter({
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-white dark:bg-[#121c18] border border-slate-200 dark:border-[#22382e] rounded-2xl shadow-2xl p-5 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950/80 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                  Xác nhận xóa khỏi lịch?
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {deleteModal.type === 'fixed' ? 'Lịch cố định (TKB)' : 'Nhiệm vụ AI xếp'}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 dark:bg-[#182620] rounded-xl border border-slate-100 dark:border-[#22382e] mb-4">
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-100 line-clamp-2">
+                "{deleteModal.item?.title}"
+              </p>
+              {deleteModal.item?.startTime && (
+                <p className="text-[10px] font-mono font-semibold text-slate-500 dark:text-slate-400 mt-1">
+                  ⏰ Khung giờ: {deleteModal.item?.startTime} {deleteModal.item?.endTime ? `- ${deleteModal.item?.endTime}` : ''}
+                </p>
+              )}
+            </div>
+
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
+              Bạn có chắc chắn muốn xóa mục này không? Khung giờ tương ứng sẽ được giải phóng trên lịch trình.
+            </p>
+
+            <div className="flex items-center justify-end space-x-2">
+              <button
+                onClick={() => setDeleteModal({ isOpen: false, item: null, type: 'subtask', isDeleting: false })}
+                disabled={deleteModal.isDeleting}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1a2c24] transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={handleExecuteDelete}
+                disabled={deleteModal.isDeleting}
+                className="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black shadow-xs transition flex items-center space-x-1.5 cursor-pointer"
+              >
+                {deleteModal.isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Đang xóa...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xóa ngay</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

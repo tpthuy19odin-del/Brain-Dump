@@ -83,6 +83,7 @@ app.post('/api/auth/register', async (req, res) => {
         name: name.trim(),
         avatar: isAdminRole ? '🛡️' : '🧑‍💻',
         role: userRole,
+        plan: userRole === 'ADMIN' ? 'PRO' : 'FREE',
         streakDays: 1,
         createdAt: new Date().toISOString()
       };
@@ -91,7 +92,8 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const { password: _, ...userWithoutPass } = createdUser;
-    res.status(201).json({ user: { ...userWithoutPass, role: userRole }, token: 'jwt-' + createdUser.id });
+    const effectivePlan = userWithoutPass.plan || (userRole === 'ADMIN' ? 'PRO' : 'FREE');
+    res.status(201).json({ user: { ...userWithoutPass, role: userRole, plan: effectivePlan }, token: 'jwt-' + createdUser.id });
   } catch (error) {
     console.error('Register error:', error);
     res.status(500).json({ error: error.message });
@@ -119,6 +121,7 @@ app.post('/api/auth/login', async (req, res) => {
         name: 'Linh Trần',
         avatar: '👩‍🎓',
         role: 'USER',
+        plan: 'FREE',
         streakDays: 7
       };
     }
@@ -135,6 +138,7 @@ app.post('/api/auth/login', async (req, res) => {
         name: 'Quản Trị Viên (Admin)',
         avatar: '🛡️',
         role: 'ADMIN',
+        plan: 'PRO',
         streakDays: 99
       };
     }
@@ -150,11 +154,40 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const effectiveRole = user.role || (cleanEmail.includes('admin') ? 'ADMIN' : 'USER');
+    const effectivePlan = user.plan || (effectiveRole === 'ADMIN' ? 'PRO' : 'FREE');
     const { password: _, ...userWithoutPass } = user;
-    res.json({ user: { ...userWithoutPass, role: effectiveRole }, token: 'jwt-' + user.id });
+    res.json({ user: { ...userWithoutPass, role: effectiveRole, plan: effectivePlan }, token: 'jwt-' + user.id });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Upgrade plan API
+app.post('/api/auth/upgrade-plan', async (req, res) => {
+  try {
+    const email = getReqUserEmail(req) || req.body?.email || 'linh@student.edu.vn';
+    const { plan = 'PRO' } = req.body;
+    
+    if (memoryStore.users) {
+      const u = memoryStore.users.find(usr => usr.email === email);
+      if (u) u.plan = plan;
+    }
+    
+    try {
+      await prisma.user.update({
+        where: { email },
+        data: { plan }
+      }).catch(() => {});
+    } catch(e) {}
+
+    res.json({
+      success: true,
+      message: `Tài khoản ${email} đã được chuyển sang gói ${plan}!`,
+      plan
+    });
+  } catch (error) {
+    res.json({ success: true, plan: req.body?.plan || 'PRO' });
   }
 });
 
@@ -189,6 +222,64 @@ app.post('/api/chat', async (req, res) => {
         reply: '⚠️ Bạn chưa đăng nhập. Vui lòng bấm vào nút "Đăng nhập" ở góc trên cùng để Brain Dump AI lưu trữ và đồng bộ dữ liệu của riêng bạn!',
         result: { type: 'AUTH_REQUIRED' },
         messages: []
+      });
+    }
+
+    // Check Free Plan Query Limit (10 questions per day)
+    let userObj = null;
+    try {
+      userObj = await prisma.user.findUnique({ where: { email: userEmail } });
+    } catch (e) {
+      userObj = memoryStore.users?.find(u => u.email === userEmail);
+    }
+
+    const isAdmin = userEmail.includes('admin') || userObj?.role === 'ADMIN';
+    const isPro = isAdmin || userObj?.plan === 'PRO';
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    let todayUserMsgCount = 0;
+    try {
+      todayUserMsgCount = await prisma.chatMessage.count({
+        where: {
+          userEmail,
+          role: 'user',
+          createdAt: { gte: todayStart }
+        }
+      });
+    } catch (e) {
+      todayUserMsgCount = (memoryStore.messages || []).filter(m => 
+        m.userEmail === userEmail && 
+        m.role === 'user' && 
+        new Date(m.createdAt) >= todayStart
+      ).length;
+    }
+
+    const FREE_LIMIT = 10;
+    if (!isPro && todayUserMsgCount >= FREE_LIMIT) {
+      const limitReply = `🚫 **Bạn đã sử dụng hết ${FREE_LIMIT}/10 lượt hỏi AI miễn phí hôm nay.**\n\n⭐ **Nâng cấp gói PRO** để tiếp tục trò chuyện, chia nhỏ bài tập và tự động xếp lịch thông minh không giới hạn!`;
+      
+      const botMsg = {
+        id: 'msg-limit-' + Date.now(),
+        userEmail,
+        role: 'assistant',
+        content: limitReply,
+        metadata: JSON.stringify({ type: 'FREE_LIMIT_REACHED' }),
+        createdAt: new Date().toISOString()
+      };
+      memoryStore.messages.push(botMsg);
+
+      return res.status(403).json({
+        reply: limitReply,
+        error: 'FREE_LIMIT_REACHED',
+        limitReached: true,
+        usedCount: todayUserMsgCount,
+        freeLimit: FREE_LIMIT,
+        result: {
+          type: 'FREE_LIMIT_REACHED',
+          reply: limitReply
+        }
       });
     }
 
@@ -783,6 +874,18 @@ app.patch('/api/subtasks/:id', async (req, res) => {
   }
 });
 
+app.delete('/api/subtasks/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await prisma.subtask.delete({ where: { id } });
+  } catch (e) {
+    if (memoryStore.subtasks) {
+      memoryStore.subtasks = memoryStore.subtasks.filter(st => st.id !== id);
+    }
+  }
+  res.json({ success: true, message: 'Đã xóa nhiệm vụ thành công' });
+});
+
 // ==========================================
 // 4. FIXED SCHEDULES API (TKB Cố Định)
 // ==========================================
@@ -947,6 +1050,20 @@ app.post('/api/reminders/send-urgent-email', async (req, res) => {
         message: 'Vui lòng đăng nhập tài khoản trước khi gửi email báo việc gấp!'
       });
     }
+
+    // Check PRO plan
+    let u = memoryStore.users?.find(usr => usr.email === recipientEmail);
+    if (!u) {
+      try { u = await prisma.user.findUnique({ where: { email: recipientEmail } }); } catch(e){}
+    }
+    const isPro = u?.plan === 'PRO' || u?.role === 'ADMIN' || recipientEmail.includes('admin');
+    if (u && !isPro) {
+      return res.status(403).json({
+        success: false,
+        error: 'Tính năng Tự động gửi Email cảnh báo việc gấp chỉ dành riêng cho gói PRO ⭐. Vui lòng nâng cấp gói!'
+      });
+    }
+
     const recipientName = req.body.userName || recipientEmail.split('@')[0];
 
     // 1. Get ONLY tasks belonging to this user
@@ -1173,9 +1290,19 @@ app.post('/api/ai/what-if', async (req, res) => {
   try {
     const { scenario, apiKey } = req.body;
     const userEmail = getReqUserEmail(req);
-
     if (!scenario || !scenario.trim()) {
       return res.status(400).json({ error: 'Vui lòng nhập kịch bản cần mô phỏng (ví dụ: Nếu nhận thêm việc làm thêm 10h/tuần)' });
+    }
+
+    if (userEmail) {
+      let u = memoryStore.users?.find(usr => usr.email === userEmail);
+      if (!u) {
+        try { u = await prisma.user.findUnique({ where: { email: userEmail } }); } catch(e){}
+      }
+      const isPro = u?.plan === 'PRO' || u?.role === 'ADMIN' || userEmail.includes('admin');
+      if (u && !isPro) {
+        return res.status(403).json({ error: 'Tính năng Mô phỏng What-if kịch bản chỉ dành riêng cho tài khoản gói PRO ⭐. Vui lòng nâng cấp gói!' });
+      }
     }
 
     let tasks = [];

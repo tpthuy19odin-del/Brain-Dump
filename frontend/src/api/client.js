@@ -36,6 +36,10 @@ export const api = {
     const res = await apiClient.post(`/auth/register`, { name, email, password });
     return res.data;
   },
+  upgradePlan: async (plan = 'PRO', email = '') => {
+    const res = await apiClient.post(`/auth/upgrade-plan`, { plan, email });
+    return res.data;
+  },
 
   // Chat
   sendMessage: async (message, apiKey = '', imageBase64 = null, email = '', userName = '') => {
@@ -70,6 +74,10 @@ export const api = {
   },
   deleteTask: async (id) => {
     const res = await apiClient.delete(`/tasks/${id}`);
+    return res.data;
+  },
+  deleteSubtask: async (id) => {
+    const res = await apiClient.delete(`/subtasks/${id}`);
     return res.data;
   },
 

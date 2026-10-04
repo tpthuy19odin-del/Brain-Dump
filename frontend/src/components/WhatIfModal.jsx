@@ -10,18 +10,23 @@ import {
   X,
   ArrowRight,
   ShieldAlert,
-  Calendar
+  Calendar,
+  Lock,
+  Crown,
+  Zap
 } from 'lucide-react';
 import { api } from '../api/client';
 import { useToast } from '../context/ToastContext';
 
-export default function WhatIfModal({ isOpen, onClose, onApplyScenario }) {
+export default function WhatIfModal({ isOpen, onClose, onApplyScenario, user, onOpenUpgrade }) {
   const [scenario, setScenario] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [simulation, setSimulation] = useState(null);
   const { showToast } = useToast();
 
   if (!isOpen) return null;
+
+  const isPro = user?.plan === 'PRO' || user?.role === 'ADMIN';
 
   const handleRunSimulation = async (e) => {
     e?.preventDefault();
@@ -133,47 +138,85 @@ export default function WhatIfModal({ isOpen, onClose, onApplyScenario }) {
 
         {/* Body */}
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
-          {/* Input Box */}
-          <form onSubmit={handleRunSimulation} className="space-y-2">
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Nhập kịch bản hoặc giả định của bạn:
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={scenario}
-                onChange={(e) => setScenario(e.target.value)}
-                placeholder="Ví dụ: Nếu nhận thêm việc làm thêm 10 tiếng/tuần..."
-                className="flex-1 p-3 rounded-xl border border-slate-200 dark:border-[#22362d] bg-white dark:bg-[#14201a] text-xs text-slate-800 dark:text-emerald-200 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
-              />
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="px-5 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md shadow-purple-600/20 transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50 shrink-0"
-              >
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                <span>{isLoading ? 'Đang phân tích...' : 'Chạy Mô Phỏng'}</span>
-              </button>
-            </div>
-          </form>
+          {!isPro ? (
+            <div className="p-8 text-center bg-gradient-to-b from-purple-50/70 to-indigo-50/30 dark:from-[#171a26] dark:to-[#10141d] border-2 border-dashed border-purple-300 dark:border-purple-800 rounded-3xl space-y-4">
+              <div className="w-14 h-14 rounded-3xl bg-gradient-to-tr from-purple-600 to-amber-500 text-white flex items-center justify-center mx-auto shadow-lg shadow-purple-600/30">
+                <Lock className="w-7 h-7" />
+              </div>
+              <div>
+                <h4 className="text-lg font-black text-slate-900 dark:text-white flex items-center justify-center gap-2">
+                  <span>Mô Phỏng Kịch Bản What-If</span>
+                  <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-purple-200 text-purple-900">PRO ⭐</span>
+                </h4>
+                <p className="text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto mt-1.5 leading-relaxed">
+                  Công cụ AI Sandbox cho phép bạn thử nghiệm trước mọi giả định thời gian (thêm ca làm, dời deadline, giảm giờ học) để dự đoán xung đột và tính toán khả thi trước khi ghi đè lịch thật.
+                </p>
+              </div>
 
-          {/* Quick Suggestions */}
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 block">
-              Gợi ý kịch bản mẫu:
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {sampleScenarios.map((s, idx) => (
+              <div className="pt-2 flex flex-col sm:flex-row justify-center gap-3">
                 <button
-                  key={idx}
-                  onClick={() => setScenario(s)}
-                  className="px-2.5 py-1 rounded-lg text-[11px] bg-slate-100 dark:bg-[#16241e] hover:bg-purple-50 dark:hover:bg-purple-950/40 text-slate-600 dark:text-slate-300 hover:text-purple-700 dark:hover:text-purple-300 border border-slate-200 dark:border-[#22362d] transition text-left"
+                  onClick={() => {
+                    onClose();
+                    if (onOpenUpgrade) onOpenUpgrade();
+                  }}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white text-xs font-black shadow-lg shadow-purple-600/25 transition cursor-pointer flex items-center justify-center space-x-2"
                 >
-                  {s}
+                  <Crown className="w-4 h-4 fill-white" />
+                  <span>Nâng Cấp PRO Để Mở Khóa</span>
                 </button>
-              ))}
+                <button
+                  onClick={onClose}
+                  className="px-4 py-3 rounded-xl bg-white dark:bg-[#1a202c] border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Để sau
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Input Box */}
+              <form onSubmit={handleRunSimulation} className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Nhập kịch bản hoặc giả định của bạn:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={scenario}
+                    onChange={(e) => setScenario(e.target.value)}
+                    placeholder="Ví dụ: Nếu nhận thêm việc làm thêm 10 tiếng/tuần..."
+                    className="flex-1 p-3 rounded-xl border border-slate-200 dark:border-[#22362d] bg-white dark:bg-[#14201a] text-xs text-slate-800 dark:text-emerald-200 focus:outline-hidden focus:ring-2 focus:ring-purple-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="px-5 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md shadow-purple-600/20 transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50 shrink-0"
+                  >
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                    <span>{isLoading ? 'Đang phân tích...' : 'Chạy Mô Phỏng'}</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Quick Suggestions */}
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mb-1.5 block">
+                  Gợi ý kịch bản mẫu:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {sampleScenarios.map((s, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setScenario(s)}
+                      className="px-2.5 py-1 rounded-lg text-[11px] bg-slate-100 dark:bg-[#16241e] hover:bg-purple-50 dark:hover:bg-purple-950/40 text-slate-600 dark:text-slate-300 hover:text-purple-700 dark:hover:text-purple-300 border border-slate-200 dark:border-[#22362d] transition text-left"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Simulation Output Result */}
           {simulation && (
